@@ -1,0 +1,476 @@
+---
+title: "Study of the Diamonds tidyverse dataset with a focus on diamond quality"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+<h3><u>**Driving Question**:</u> Why are low-quality diamonds more expensive?</h3>
+
+```{r setup, message = FALSE}
+library(viridis)
+library(tidyverse)
+library(ggplot2)
+library(gridExtra)
+library(corrr)
+```
+
+## -1- Loading the dataset & summary
+
+The Diamonds dataset contains the prices and other attributes of **53940 diamonds**.
+
+```{r}
+data <- diamonds
+summary(data)
+```
+
+## -2- Available features
+
+There are 10 available variables in the dataset (including price):
+
+- **price**: price in US dollars (\$326--\$18,823)
+- **carat**: weight of the diamond (0.2--5.01)
+- **cut**: quality of the cut (Fair, Good, Very Good, Premium, Ideal)
+- **color**: diamond colour, from D (best) to J (worst)
+- **clarity**: a measurement of how clear the diamond is (I1 (worst), SI2, SI1, VS2, VS1, VVS2, VVS1, IF (best))
+- **x**: length in mm (0--10.74)
+- **y**: width in mm (0--58.9)
+- **z**: depth in mm (0--31.8)
+- **depth**: total depth percentage = z / mean(x, y) = 2 * z / (x + y) (43--79)
+- **table**: width of top of diamond relative to widest point (43--95)
+
+```{r, echo = FALSE}
+print(paste("The Diamonds dataset contains ", 
+            ncol(data), 
+            " variables."))
+```
+
+## -3- 'Fair' diamonds
+
+We find **1610 'Fair' cut diamonds in the dataset**, i.e., about 3% of the dataset.
+
+```{r}
+fair_data <- data %>% 
+  filter(cut=="Fair")
+fair_data %>% head(5)
+summary(fair_data)
+```
+
+## -4- 'Fair' and 'Good' diamonds under $600
+
+We find **17 'Fair' and 488 'Good' diamonds that are valued under $600 in the dataset**, i.e., respectively 0.03% and 0.9% of the dataset (or 1% respectively of the 'Fair' and 'Good' diamonds).
+
+```{r}
+fg_under600_data <- data %>% 
+  filter(cut=="Fair" | cut=="Good") %>% 
+  filter(price<=600)
+fg_under600_data %>% head(5)
+summary(fg_under600_data)
+```
+
+## -5- Mean price over the whole dataset
+
+We find that the mean price of a diamond (regardless of its features) in the Diamonds dataset is about **3932.8 in US dollars**.
+
+```{r}
+round(mean(data$price), digits=2)
+```
+
+## -6 & 7- Building the 'color' & 'clarity' groupings
+
+We find that by grouping the dataset by 'color' and 'clarity', we yield a **total of 56 unique groups**.
+
+```{r, message=FALSE}
+color_clarity_data <- data %>%
+  group_by(color, clarity) %>% 
+  summarise(count = n(), 
+            average_price = mean(price))
+
+color_clarity_data
+```
+
+```{r}
+nrow(color_clarity_data)
+```
+
+## -8- Visualizing the 'average_price' distribution per 'color' & 'clarity' groupings
+
+We recall that 'clarity' is a measurement of how clear the diamond is: I1 (worst), SI2, SI1, VS2, VS1, VVS2, VVS1, IF (best). 
+
+An hypothesis would be that **the clearer the diamond, the more expensive it gets**. However, **we observe that the average price distribution of diamonds tend to be inversely proportional to 'clarity' within a 'color' group**, except for the color E and D.
+
+```{r}
+ggplot(color_clarity_data,
+       aes(color,
+           average_price,
+           colour=clarity)) +
+  scale_colour_brewer(name="Clarity\nmeasurement", palette = "Spectral") +
+  geom_point(size=2) + 
+  labs(x="Color groups", 
+       y="Average price per 'clarity' measurement",
+       title="Average price per 'color' and 'clarity' in the Diamonds dataset")
+```
+
+```{r}
+ggplot(color_clarity_data,
+       aes(x = color,
+           y = count,
+           fill = clarity)) +
+  scale_fill_brewer(name="Clarity\nmeasurement", palette = "Spectral") +
+  geom_bar(stat = "identity",
+           position = "dodge") + 
+  labs(x="Color groups", 
+       y="Amount of reported diamonds per 'clarity' measurement",
+       title="Amount of diamonds per 'color' and 'clarity' in the Diamonds dataset")
+```
+
+## -9- Counting of 'cut' & 'color' groups
+
+```{r, message=FALSE}
+color_cut_data <- data %>% 
+  group_by(color, cut) %>% 
+  summarise(count = n())
+
+color_cut_data
+```
+
+We reuse the function used to construct the barplot in question 8 to plot the amount of reported diamonds per 'color' groupings and 'cut' quality.
+
+```{r, echo=FALSE}
+ggplot(color_cut_data,
+       aes(x = color,
+           y = count,
+           fill = cut)) +
+  scale_fill_brewer(name="Cut\nquality", palette = "Spectral") +
+  geom_bar(stat = "identity",
+           position = "dodge") + 
+  labs(x="Color groups", 
+       y="Amount of reported diamonds per cut quality",
+       title="Amount of diamonds per 'color' and 'cut' in the Diamonds dataset")
+```
+
+## -10- Visualizing the mean characteristics of each 'clarity' category
+
+We want to find the mean value of each numeric variable characterizing a 'clarity' category of diamonds. By plotting the different numeric features we have at our disposal, we observe that **the quality of a diamond seems inversely proportional to its size and weight** (carat). 
+
+```{r}
+clarity_means <- data %>% group_by(clarity) %>% select_if(is.numeric) %>% summarise_all(mean) 
+
+clarity_means
+```
+
+```{r, echo=FALSE}
+p1 <- ggplot(clarity_means, aes(x=clarity, y=carat, fill=carat)) +
+  geom_bar(stat="identity") +
+  ggtitle("weight") +
+  theme(legend.position = "none", 
+        plot.title = element_text(size=10),
+        axis.text.x=element_text(angle=-90, hjust=0),
+        axis.title.x = element_blank(),
+        axis.title.y = element_blank())
+
+p2 <- ggplot(clarity_means, aes(x=clarity, y=depth, fill=depth)) +
+  geom_bar(stat="identity") +
+  ggtitle("depth %") +
+  theme(legend.position = "none", 
+        plot.title = element_text(size=10),
+        axis.text.x=element_text(angle=-90, hjust=0),
+        axis.title.x = element_blank(),
+        axis.title.y = element_blank()) + 
+  coord_cartesian(ylim = c(60,63))
+
+p3 <- ggplot(clarity_means, aes(x=clarity, y=table, fill=table)) +
+  geom_bar(stat="identity") +
+  ggtitle("width rel. to widest point") +
+  theme(legend.position = "none", 
+        plot.title = element_text(size=10),
+        axis.text.x=element_text(angle=-90, hjust=0),
+        axis.title.x = element_blank(),
+        axis.title.y = element_blank()) + 
+  coord_cartesian(ylim = c(56,58.5))
+
+p4 <- ggplot(clarity_means, aes(x=clarity, y=x, fill=x)) +
+  geom_bar(stat="identity") +
+  ggtitle("length (in mm)") +
+  theme(legend.position = "none", 
+        plot.title = element_text(size=10),
+        axis.text.x=element_text(angle=-90, hjust=0),
+        axis.title.x = element_blank(),
+        axis.title.y = element_blank()) + 
+  coord_cartesian(ylim = c(4,7))
+
+p5 <- ggplot(clarity_means, aes(x=clarity, y=y, fill=y)) +
+  geom_bar(stat="identity") +
+  ggtitle("width (in mm)") +
+  theme(legend.position = "none", 
+        plot.title = element_text(size=10),
+        axis.text.x=element_text(angle=-90, hjust=0),
+        axis.title.x = element_blank(),
+        axis.title.y = element_blank()) + 
+  coord_cartesian(ylim = c(4,7))
+
+p6 <- ggplot(clarity_means, aes(x=clarity, y=z, fill=z)) +
+  geom_bar(stat="identity") +
+  ggtitle("depth (in mm)") +
+  theme(legend.position = "none", 
+        plot.title = element_text(size=10),
+        axis.text.x=element_text(angle=-90, hjust=0),
+        axis.title.x = element_blank(),
+        axis.title.y = element_blank()) + 
+  coord_cartesian(ylim = c(2,4.5))
+
+p7 <- ggplot(clarity_means, aes(x=clarity, y=price, fill=price)) +
+  geom_bar(stat="identity") +
+  ggtitle("price in USD") +
+  theme(legend.position = "none", 
+        plot.title = element_text(size=10),
+        axis.text.x=element_text(angle=-90, hjust=0),
+        axis.title.x = element_blank(),
+        axis.title.y = element_blank()) + 
+  coord_cartesian(ylim = c(2000,5200))
+
+grid.arrange(p1, p2, p3, p4, p5, p6, p7, nrow = 3,
+             top = "Mean values of Diamonds' numeric features per 'clarity' category",
+             bottom = "Clarity categories")
+```
+
+## -11- Relationship between diamond quality and price
+
+We are interested in the relationship between the quality of a diamond (i.e. 'cut', 'color', and 'clarity') and its 'price.'
+
+Our observations are:
+
+1. **The mean 'price' seems to increase as the 'cut' quality of a diamond decreases** (inverse correlation)
+2. **The mean 'price' seems to increase as the 'color' of a diamond worsens** (inverse correlation)
+3. **The mean 'price' seems to increase as the 'clarity' measurement of a diamond worsens** (inverse correlation)
+4. Each quality category shows a large amount of outliers with regards to 'price'
+
+The negative relationship between 'quality' and 'price' might indicate that there is a discriminatory process during the selection for sale of a diamond.
+Indeed, based on our observations in -10-, we might supposed the following hypotheses:
+
+> The negative relationship between 'quality' and 'price', coupled with a positive relationship between 'carat' and 'price', might indicate that the size of the low quality diamonds counter-balances the potential decrease in value its quality would have.
+>
+> Furthermore, it is possible that most small, low-quality diamonds are discarded during the production chain of diamons, meaning they will never be sold. That situation would impact and skew the pricing of low-quality diamonds upward.
+
+Of note, using a logarithmic scale may help better visualize the relationships.
+
+```{r}
+boxplot(price ~ cut, data = data, 
+        xlab = "Price", ylab = "", 
+        main = "Relationship between the cut quality and price of a diamond", 
+        horizontal=TRUE, las = 1)
+
+boxplot(price ~ color, data = data, 
+        xlab = "Price", ylab = "", 
+        main = "Relationship between the color and price of a diamond", 
+        horizontal=TRUE, las=1)
+
+boxplot(price ~ clarity, data = data, 
+        xlab = "Price", ylab = "", 
+        main = "Relationship between the clarity measurement and price of a diamond", 
+        horizontal=TRUE, las=1)
+```
+
+## -12 & 13- Relationship between weight ('carat') and 'price'
+
+We focus on diamonds smaller than 2.5 carats.
+
+```{r}
+pruned_large_carat_data <- data %>% filter(carat < 2.5)
+```
+
+We log transform the 'carat' and 'price' values of the dataset:
+
+```{r}
+pruned_large_carat_data$log_carat = log(pruned_large_carat_data$carat)
+pruned_large_carat_data$log_price = log(pruned_large_carat_data$price)
+```
+
+We then plot the relationship between the two variables.
+
+We observe a **strong positive relationship between size ('carat') and 'price'**.
+
+```{r, message=FALSE}
+ggplotRegression <- function(fit, x_title, title_size, subtitle_size, plot_title){
+  ggplot(fit$model, aes_string(x = names(fit$model)[2], 
+                               y = names(fit$model)[1])) + 
+    geom_point(shape=4, color="#9c9abc") +
+    stat_smooth(method = "lm", col = "purple") +
+    theme(plot.title = element_text(size=title_size),
+          plot.subtitle = element_text(size=subtitle_size)) +
+    labs(x=x_title, 
+         y="Prices (log)",
+         title=plot_title,
+         subtitle=paste("Adj.R2=",signif(summary(fit)$adj.r.squared, 5),
+                        ", Interc.=",signif(fit$coef[[1]],5 ),"\n",
+                        "Slope=",signif(fit$coef[[2]], 5),
+                        ", P=",signif(summary(fit)$coef[2,4], 5)))
+}
+
+# Identify and remove outliers for a better data visualization
+outliers <- boxplot(pruned_large_carat_data$log_carat, plot = FALSE)$out
+no_outliners <- pruned_large_carat_data[!(pruned_large_carat_data$log_carat %in% outliers), ]
+
+ggplotRegression(lm(log_price ~ log_carat, data = no_outliners), 
+                 "Diamond carats (log-scale)", 
+                 12, 8,
+                 "Relationship between diamond carats and prices (log)")
+```
+
+## -14- Relationship between 'price' and other numeric features 
+
+For the purpose of visualizing relationships between diamond prices and numeric features, we prune outliers using the following process:
+
+```{r}
+# df$var = log(df$var)
+# outliers <- boxplot(df$var, plot = FALSE)$out
+# df_without_outliers = df[!(df$var %in% outliers), ]
+```
+
+```{r, echo=FALSE}
+pruned_large_carat_data$log_x = log(pruned_large_carat_data$x+1) #+1 as min = 0
+pruned_large_carat_data$log_y = log(pruned_large_carat_data$y+1) #+1 as min = 0
+pruned_large_carat_data$log_z = log(pruned_large_carat_data$z+1) #+1 as min = 0
+pruned_large_carat_data$log_depth = log(pruned_large_carat_data$depth)
+pruned_large_carat_data$log_table = log(pruned_large_carat_data$table)
+
+# Identify and remove outliers for a better data visualization   
+outliers <- boxplot(pruned_large_carat_data$log_x, plot = FALSE)$out
+no_outliners = pruned_large_carat_data[!(pruned_large_carat_data$log_x %in% outliers), ]
+outliers <- boxplot(no_outliners$log_y, plot = FALSE)$out
+no_outliners = no_outliners[!(no_outliners$log_y %in% outliers), ]
+outliers <- boxplot(no_outliners$log_z, plot = FALSE)$out
+no_outliners = no_outliners[!(no_outliners$log_z %in% outliers), ]
+outliers <- boxplot(no_outliners$log_depth, plot = FALSE)$out
+no_outliners = no_outliners[!(no_outliners$log_depth %in% outliers), ]
+outliers <- boxplot(no_outliners$log_table, plot = FALSE)$out
+no_outliners = no_outliners[!(no_outliners$log_table %in% outliers), ]
+```
+
+Given the following plots, we find that **price has a weakly positive relationship with the "width of top of diamond relative to widest point" variable and a non-existent relationship with the "total depth percentage" variable** -- their adjusted R2 being close to 0 also shows that they are not good predictors of price. However, we see that there is a **positive relationship between the price and the various size variables**.
+
+```{r, message=FALSE}
+p1 <- ggplotRegression(lm(log_price ~ log_x, data = no_outliners), 
+                       "length in mm (log)",
+                       10, 7,"")
+p2 <- ggplotRegression(lm(log_price ~ log_y, data = no_outliners), 
+                       "width in mm (log)",
+                       10, 7,"")
+p3 <- ggplotRegression(lm(log_price ~ log_z, data = no_outliners), 
+                       "depth in mm (log)",
+                       10, 7,"")
+p4 <- ggplotRegression(lm(log_price ~ log_depth, data = no_outliners), 
+                       "depth % (log)",
+                       10, 7,"")
+p5 <- ggplotRegression(lm(log_price ~ log_table, data = no_outliners), 
+                       "width to widest point (log)",
+                       10, 7,"")
+
+grid.arrange(p1, p2, p3, p4, p5, nrow = 2,
+             top = "Relationship between diamond features and price (log, except. carat)")
+```
+
+One thing we might want to check is the correlation between 'x', 'y', and 'z' and the 'carat' variable. Indeed, intuitively, the three variables should be highly correlated and even dependent on the 'carat'.
+
+As we see below with a Pearson correlation coefficient, **'x', 'y', and 'z' are as much as 97.5% correlated with 'carat'**.
+
+```{r, message=FALSE}
+data %>% select(c(x,y,z,carat)) %>% 
+  correlate() %>% 
+  focus(carat)
+```
+
+
+## -In-Between- Correlation between 'carat', 'cut', and 'clarity'
+
+To finalize our analysis, we can use the Kruskal-Wallis test to check the correlation between categorical and numeric values (i.e. here 'carat' vs. 'cut', and 'carat' vs. 'clarity'). A low p-value would indicate a strong correlation. We can see the correlation by box-plotting each pair of variable against each other.
+
+We find that 'carat' is strongly correlated to 'cut', 'clarity', and 'color' by the low p-value of the two tests.
+
+```{r, message=FALSE}
+kruskal.test(carat ~ cut, data=data)
+
+cut_data <- data %>% group_by(cut) %>% summarise(mean_y = mean(carat))
+ggplot(data) + geom_boxplot(aes(x = cut, y = carat)) + 
+   geom_path(data = cut_data, aes(x = cut, y = mean_y, group = 1))
+```
+
+```{r, message=FALSE}
+kruskal.test(carat ~ clarity, data=data)
+
+clarity_data <- data %>% group_by(clarity) %>% summarise(mean_y = mean(carat))
+ggplot(data) + geom_boxplot(aes(x = clarity, y = carat)) + 
+   geom_path(data = clarity_data, aes(x = clarity, y = mean_y, group = 1))
+```
+
+```{r, message=FALSE}
+kruskal.test(carat ~ color, data=data)
+
+color_data <- data %>% group_by(color) %>% summarise(mean_y = mean(carat))
+ggplot(data) + geom_boxplot(aes(x = color, y = carat)) + 
+   geom_path(data = color_data, aes(x = color, y = mean_y, group = 1))
+```
+
+## -15- Regression on the original data
+
+Now let's go back to the original data and check the effect of each variable on the price.
+
+As a note:
+
+> R's default is to fit a series of polynomial functions or contrasts to the levels of the variable. The first is linear (.L), the second is quadratic (.Q), the third is cubic (.C), and so on. R will fit one fewer polynomial functions than the number of available levels
+
+The model shows that 'carat' does show a lot of impact towards the 'price' along with 'clarity' and 'cut', as expected.
+
+```{r}
+fit <- glm(price ~ carat + x + y + z + depth + table + 
+             factor(cut) + factor(color) + factor(clarity),
+           data=data,
+           family=gaussian)
+summary(fit)
+```
+
+```{r, echo=FALSE, message=FALSE}
+p1 <- ggplotRegression(lm(price ~ carat, data = data), 
+                       "length in mm (log)",
+                       10, 7,"")
+p2 <- ggplotRegression(lm(price ~ depth, data = data), 
+                       "width in mm (log)",
+                       10, 7,"")
+p3 <- ggplotRegression(lm(price ~ table, data = data), 
+                       "depth in mm (log)",
+                       10, 7,"")
+p4 <- ggplotRegression(lm(price ~ x, data = data), 
+                       "depth % (log)",
+                       10, 7,"")
+p5 <- ggplotRegression(lm(price ~ y, data = data), 
+                       "width to widest point (log)",
+                       10, 7,"")
+p6 <- ggplotRegression(lm(price ~ z, data = data), 
+                       "width to widest point (log)",
+                       10, 7,"")
+
+grid.arrange(p1, p2, p3, p4, p5, p6, nrow = 3,
+             top = "Relationship between diamond features and price (w/o log)")
+```
+
+## -CONCLUSION-
+
+We return to our driving Question: <u>**Why are low-quality diamonds more expensive?**</u>
+
+We found in **Q4** that the dataset did not provide many instances of 'fair' or 'good' diamond under $600 (less than 1% of the total). This situation implies that some diamonds might be missing from the dataset. A good intuition is that low quality diamonds that do not pass a certain threshold would be discarded before hitting the market. **Q9** only reinforced the fact that the number of low cut quality diamonds (there, per 'color' group) is low.
+
+Furthermore, **Q8** highlighted that the intuition that the 'clarity' of a diamond would positively impact its 'price' might not hold as low 'clarity' diamonds tended to yield a higher price within the same color group.
+
+**Q10** highlighted that our intuition that low-quality, low-carat diamonds are rare in the dataset is right. **Q11** by providing evidence of dependence via the use of linear regression helps us tend towards the hypothesis.
+
+**Q12** and **Q13** reinforce the fact that 'carat' is a strongly positively-correlated predictor of 'price.' Furthermore, the variables 'depth', 'x', 'y', and 'z' are nearly fully correlated to 'carat' -- which is expected given that size, i.e., 'carat' is dependent on those three variables.
+
+**Q14** and our **in-between** show that in fine, 'carat' is correlated to 'cut' and 'clarity'.
+
+In the end, we remain with 'carat', 'color', 'cut', and 'clarity' as the main predictor of price. However, since we found that 'color', 'cut', and 'clarity' are correlated to 'carat' we can focus on carat alone. And so we can go back to **Q1** and our **in-between** and confidently conclude:
+
+> **The reason why low quality diamonds tend to be more expensive is because they are generally of a higher carat than the rest of the market.**
+>
+> **Low-quality, low-carat diamonds actually are not sold, and therefore not priced, which skew the statistics towards a higher pricing.**
+
