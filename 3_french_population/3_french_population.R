@@ -1,6 +1,8 @@
 library(shiny)
+library(tidyverse)
 library(ggplot2)
 library(dplyr)
+library(tidyr)
 
 ui <- fluidPage(
     # App title
