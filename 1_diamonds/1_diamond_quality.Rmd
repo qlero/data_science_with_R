@@ -431,24 +431,33 @@ fit <- glm(price ~ carat + x + y + z + depth + table +
 summary(fit)
 ```
 
+We recall:
+
+```{r, message=FALSE}
+ggplotRegression(lm(log_price ~ log_carat, data = no_outliners), 
+                 "Diamond carats (log-scale)", 
+                 12, 8,
+                 "Relationship between diamond carats and prices (log)")
+```
+
 ```{r, echo=FALSE, message=FALSE}
 p1 <- ggplotRegression(lm(price ~ carat, data = data), 
-                       "length in mm (log)",
+                       "length in mm",
                        10, 7,"")
 p2 <- ggplotRegression(lm(price ~ depth, data = data), 
-                       "width in mm (log)",
+                       "width in mm",
                        10, 7,"")
 p3 <- ggplotRegression(lm(price ~ table, data = data), 
-                       "depth in mm (log)",
+                       "depth in mm",
                        10, 7,"")
 p4 <- ggplotRegression(lm(price ~ x, data = data), 
-                       "depth % (log)",
+                       "depth %",
                        10, 7,"")
 p5 <- ggplotRegression(lm(price ~ y, data = data), 
-                       "width to widest point (log)",
+                       "width to widest point",
                        10, 7,"")
 p6 <- ggplotRegression(lm(price ~ z, data = data), 
-                       "width to widest point (log)",
+                       "width to widest point",
                        10, 7,"")
 
 grid.arrange(p1, p2, p3, p4, p5, p6, nrow = 3,

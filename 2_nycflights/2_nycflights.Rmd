@@ -124,26 +124,30 @@ arrival_delay <- flights$arr_delay
 departure_delay <- flights$dep_delay
 ```
 
-## -5 & 6- Extracting the flights to Boston and checking for NA.
+## -5- Extracting the flights to Boston
 
 There are **15508 recorded flights from a New York airport** (JFK, EWR, LGA) **to Boston's Logan International Airport** (BOS).
 
-We find that there are:
-
-- **459 values missing** from column 4 "dep_time"
-- **459 values missing** from column 6 "dep_delay"
-- **480 values missing** from column 7 "arr_time"
-- **486 values missing** from column 9 "arr_delay"
-- **373 values missing** from column 12 "tailnum"
-- **486 values missing** from column 15 "air_time"
-
 ```{r, message=FALSE}
-flights_to_boston <- flights %>% filter(flights$dest=="BOS")
+flights_to_boston <- flights %>% filter(dest=="BOS")
 print(nrow(flights_to_boston))
 
 summary(flights_to_boston)
+```
 
-na_check_df <- which(is.na(flights_to_boston), arr.ind=TRUE)
+## -6- Checking for NA
+
+We find that, for all the flights in 2013, there are:
+
+- **8255 values missing** from column 4 "dep_time"
+- **8255 values missing** from column 6 "dep_delay"
+- **8713 values missing** from column 7 "arr_time"
+- **9430 values missing** from column 9 "arr_delay"
+- **2512 values missing** from column 12 "tailnum"
+- **9430 values missing** from column 15 "air_time"
+
+```{r, message=FALSE}
+na_check_df <- which(is.na(flights), arr.ind=TRUE)
 as.data.frame(na_check_df) %>% group_by(col) %>% summarise(n = n())
 ```
 
@@ -220,7 +224,7 @@ ggplot(late_TF_flights, aes(fill=delayed,
                             x=factor(month, level=level_order))) + 
   geom_bar(position="dodge", stat="identity") + 
   labs(x = "Months", y="Total Amount") +
-  ggtitle("Total amount of flights per month that is either delayed, on-time, or unknown in 2013") + 
+  ggtitle("Total amount of flights per month that is either delayed, on-time,\nor unknown in 2013") + 
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 ```
 
@@ -230,13 +234,13 @@ The number of flights in and out of NYC seems consistent at first glance. The dr
 
 ```{r, message=FALSE}
 flights_per_day <- flights %>% 
-  group_by(day) %>%
+  group_by(month, day) %>%
   summarise(count=n())
 
 ggplot(flights_per_day, aes(y=count, x=day, fill=day)) + 
   geom_bar(stat="identity") + 
   labs(x = "Day of the Month", y="Total number of flights") +
-  ggtitle("Total amount of flights in and out of NYC for each day in a month in 2013")
+  ggtitle("Total amount of flights in and out of NYC for each day in a month\nin 2013")
 ```
 
 ## -11- Number of flights per day of the week
@@ -248,13 +252,17 @@ flights_per_day <-flights %>%
   mutate(hh = round(sched_dep_time / 100, 0) - 1) %>% 
   mutate(ymd = lubridate::ymd(sprintf("%04.0f-%02.0f-%02.0f", year, month, day), locale = "en_US.utf8")) %>% 
   mutate(wd = lubridate::wday(ymd, label=TRUE, locale = "en_US.utf8")) %>%
-  group_by(wd) %>%
+  group_by(wd, ymd) %>%
   summarise(count=n())
+
+ggplot(flights_per_day) + geom_boxplot(aes(x = wd, y = count)) + 
+  labs(x = "Day of the Week", y="Spread of daily flights") +
+  ggtitle("Statistical distribution of the number of flights in and out of NYC per day\nin 2013")
 
 ggplot(flights_per_day, aes(y=count, x=wd, fill=wd)) + 
   geom_bar(stat="identity") + 
   labs(x = "Day of the Week", y="Total number of flights") +
-  ggtitle("Total amount of flights in and out of NYC for each day in a week in 2013")
+  ggtitle("Total amount of flights in and out of NYC for each day in a week\nin 2013")
 ```
 
 ## -12 & 13- Patterns on Saturdays
@@ -264,9 +272,10 @@ We collect and plot the flights data of each of the 52 Saturdays in the year 201
 Based on the archive of the calendar of the [University of the District of Columbia](https://www.udc.edu/registrar/academic-calendars-archive/), we indeed observe series of breaks starting in March 2013 (including the common [Spring break](https://en.wikipedia.org/wiki/Spring_break) observed in the USA) and going forward. Furthermore, the summer months coincide with a long holiday period (the summer break in 2013 lasted from Jun. 26th to Sep. 9th).
 
 ```{r, message=FALSE}
-flights_on_saturday <-flights %>%
+flights_on_saturday <- flights %>%
   mutate(hh = round(sched_dep_time / 100, 0) - 1) %>% 
-  mutate(ymd = lubridate::ymd(sprintf("%04.0f-%02.0f-%02.0f", year, month, day))) %>% 
+  mutate(ymd = lubridate::ymd(sprintf("%04.0f-%02.0f-%02.0f", year, month, day), 
+                              locale = "en_US.utf8")) %>% 
   mutate(wd = lubridate::wday(ymd, label=TRUE, locale = "en_US.utf8")) %>%
   filter(wd=="Sat") %>% 
   group_by(ymd) %>% 
@@ -276,33 +285,96 @@ nrow(flights_on_saturday)
 
 ggplot(flights_on_saturday, aes(y=count, x=ymd, fill=ymd)) + 
   geom_bar(stat="identity") + 
-  labs(x = "Saturdays in the year", y="Total number of flights") +
-  ggtitle("Total amount of flights in and out of NYC for each day in a week in 2013")
+  labs(x = "Saturdays in 2013", y="Total number of flights") +
+  ggtitle("Total amount of flights in and out of NYC for each day in a week\nin 2013")
 ```
 
+## -14- Creating a dummy variable "term"
 
+Our goal is to capture the possible variation in daily flights due to school breaks in the United States. Based on the break periods extracted from the [University of the District of Columbia](https://www.udc.edu/registrar/academic-calendars-archive/) calendar in 2013.
 
+We find that:
 
+- **The Christmas period and after New Year's Eve are the period with the least amount of flights**
+- **Summer and Spring breaks seem to have a higher amount of flights than average**
+- Fall break does not seem to differ from the School Periods, albeit it has a lower variance (which is expected since School Periods contains several bank holidays that may be represented as outliers)
 
+```{r, message=FALSE, warning=FALSE}
+spring_break_start <- "2013-03-17"
+spring_break_end <- "2013-04-01"
+summer_break_start <- "2013-06-26"
+summer_break_end <- "2013-09-26"
+fall_break_start <-"2013-10-29"
+fall_break_end <- "2013-11-04"
+endyear_christmas_break_start <- "2013-12-18"
+endyear_christmas_break_end <- "2014-01-13"
+startyear_christmas_break_end <- "2013-01-14"
 
+flights_per_date <- flights %>%
+  mutate(hh = round(sched_dep_time / 100, 0) - 1) %>% 
+  mutate(ymd = lubridate::ymd(sprintf("%04.0f-%02.0f-%02.0f", year, month, day), 
+                              locale = "en_US.utf8")) %>% 
+  mutate(wd = lubridate::wday(ymd, label=TRUE, locale = "en_US.utf8"))%>%
+  mutate(period = case_when(
+    ymd >= spring_break_start & ymd <= spring_break_end ~ "Spring\nBreak",
+    ymd >= summer_break_start & ymd <= summer_break_end ~ "Summer\nBreak",
+    ymd >= fall_break_start & ymd <= fall_break_end ~ "Fall\nBreak",
+    ymd <= startyear_christmas_break_end ~ "Early\nJanuary 2013",
+    ymd >= endyear_christmas_break_start & ymd <= endyear_christmas_break_end ~ "Christmas\nBreak",
+    TRUE ~ "School\nSemesters"
+    )) 
 
+flights_per_period <- flights_per_date %>%
+  group_by(period, ymd) %>% 
+  summarize(count=n())
 
+flights_per_period <- aggregate(flights_per_period,
+                                by=list(flights_per_period$ymd,
+                                        flights_per_period$period),
+                                FUN=mean) %>% 
+  select(-c(period, ymd)) %>%
+  rename(ymd=Group.1, period=Group.2)
 
+ggplot(flights_per_period) + geom_boxplot(aes(x = period, y = count, fill=period)) + 
+  labs(x = "Distinguishable 2013 Periods", y="Average daily flights") +
+  ggtitle("Spread of average daily flights per school period in 2013 in NYC")
+```
 
+## -15- School periods impact on flights per business days
 
+If we discard the Christmas and early january 13 period, we find that on average, **the number of daily flights during a business day is higher during school breaks** such as the Fall, Spring and Summer ones.
 
+```{r, message=FALSE, warning=FALSE}
+flights_per_period <- flights_per_date %>%
+  group_by(period, ymd, wd) %>% 
+  summarize(count=n())
 
+flights_per_period <- aggregate(flights_per_period,
+                                by=list(flights_per_period$wd,
+                                        flights_per_period$period),
+                                FUN=mean) %>% 
+  select(-c(period, ymd, wd)) %>%
+  rename(wd=Group.1, period=Group.2) %>% filter(wd != "Sat" & wd != "Sun")
 
+ggplot(flights_per_period, 
+       aes(fill=period,
+           y=count, 
+           x=wd)) + 
+  geom_bar(position="dodge", stat="identity") +
+  scale_fill_brewer(name="School Periods", palette = "Spectral") +
+  labs(x = "Business days", y="Average daily flights") +
+  ggtitle("Average daily flights per school period per business day\n in 2013 in NYC") + 
+  coord_cartesian(ylim = c(800,1000))
+```
 
+## -CONCLUSION- 
 
+We return to our driving Question: <u>**What affects the number of daily flights?**</u>
 
+Based on our exploratory analysis, we find that the following factors influence the number of daily flights in and out of NYC:
 
+1. **Whether the day is a business day or a weekend day** (**Q10** and **Q11**), as business travels only happens during the week, which prop up the average number of flights from Monday to Friday
 
+2. **Whether the period is a school break or school semester** (**Q12** to **Q14**), as holidays tend to prop up the average number of flights (except maybe for the Christmas break where we might infer that only a few days will see a rise while other will drop as people might not fly on December 24th, 25th, and January 1st).
 
-
-
-
-
-
-
-
+All in all, we do observe a **seasonality in the average number of daily flights in and out of NYC airports**. 
