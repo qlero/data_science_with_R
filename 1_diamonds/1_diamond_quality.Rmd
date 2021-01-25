@@ -11,6 +11,7 @@ output:
 ```{r setup, message = FALSE}
 library(viridis)
 library(tidyverse)
+library(dplyr)
 library(ggplot2)
 library(gridExtra)
 library(corrr)

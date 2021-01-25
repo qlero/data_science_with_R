@@ -1,0 +1,308 @@
+---
+title: "Study of the nycflights13 library dataset with a focus on daily flight variations"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+<h3><u>**Driving Question**:</u> What affects the number of daily flights?</h3>
+
+```{r setup, message = FALSE}
+library(nycflights13)
+library(tidyverse)
+library(ggplot2)
+library(dplyr)
+library(lubridate)
+```
+
+## -1- Loading the dataset
+
+The nycflights13 dataset contains five tables:
+
+1. airlines
+2. airports
+3. flights
+4. planes
+5. weather
+
+More information can be found on [The Comprehensive R Archive Network](https://cran.r-project.org/web/packages/nycflights13/nycflights13.pdf).
+
+```{r}
+airlines <- nycflights13::airlines
+airports <- nycflights13::airports
+flights <- nycflights13::flights
+planes <- nycflights13::planes
+weather <- nycflights13::weather
+```
+
+## -2- Exploring the dataset
+
+The ``airlines`` table contains a look-up table of airline names and carrier codes. It contains the following variables:
+
+- **carrier**::*character* -- Two letter abbreviation.
+- **name**::*character* -- Full name.
+
+```{r, echo = FALSE}
+summary(airlines)
+```
+
+The ``airports`` table contains useful metadata about airports. It contains the following variables:
+
+- **faa**::*character* -- FAA airport code.
+- **name**::*character* -- Usual name of the aiport.
+- **lat**, **lon**::*numeric* -- Location of airport.
+- **alt**::*numeric* -- Altitude, in feet.
+- **tz**::*numeric* -- Timezone offset from GMT.
+- **dst**::*character* -- Daylight savings time zone. A = Standard US DST: starts on the second Sunday of March, ends on the first Sunday of November. U = unknown. N = no dst.
+- **tzone**::*character* -- IANA time zone, as determined by GeoNames webservice.
+
+```{r, echo = FALSE}
+summary(airports)
+```
+
+The ``flights`` table contains on-time data for all flights that departed NYC (i.e. JFK, LGA or EWR) in 2013. It contains the following variables:
+
+- **year**, **month**, **day**::*integer* -- Date of departure.
+- **dep_time**, **arr_time**::*integer* -- Actual departure and arrival times (format HHMM or HMM), local tz.
+- **sched_dep_time**, **sched_arr_time**::*integer* -- Scheduled departure and arrival times (format HHMM or HMM), local tz.
+- **dep_delay**, **arr_delay**::*numeric* -- Departure and arrival delays, in minutes. Negative times represent early departures/arrivals.
+- **carrier**::*character* -- Two letter carrier abbreviation. See airlines to get name. 
+- **flight**::*integer* -- Flight number.
+- **tailnum**::*character* -- Plane tail number. See planes for additional metadata.
+- **origin**, **dest**::*character* -- Origin and destination. See airports for additional metadata.
+- **air_time**::*numeric* -- Amount of time spent in the air, in minutes.
+- **distance**::*numeric* -- Distance between airports, in miles.
+- **hour**, **minute**::*numeric* -- Time of scheduled departure broken into hour and minutes.
+- **time_hour**::*POSIXct* -- Scheduled date and hour of the flight as a POSIXct date. Along with origin, can be used to join flights data to weather data.
+
+```{r, echo = FALSE}
+summary(flights)
+```
+
+The ``planes`` table contains plane metadata for all plane tailnumbers found in the FAA aircraft registry. It contains the following variables:
+
+- **tailnum**::*character* -- Tail number.
+- **year**::*integer* -- Year manufactured.
+- **type**::*character* -- Type of plane.
+- **manufacturer**, **model**::*character* -- Manufacturer and model.
+- **engines**, **seats**::*integer* -- Number of engines and seats.
+- **speed**::*integer* -- Average cruising speed in mph.
+- **engine**::*character* -- Type of engine.
+
+```{r, echo = FALSE}
+summary(planes)
+```
+
+The ``weather`` table contains hourly meterological data for LGA, JFK and EWR. It contains the following variables:
+
+- **origin**::*character* -- Weather station. Named origin to facilitate merging with flights data.
+- **year**, **month**, **day**, **hour**::*integer* -- Time of recording.
+- **temp**, **dewp**::*numeric* -- Temperature and dewpoint in F.
+- **humid**::*numeric* --  Relative humidity.
+- **wind_dir**, **wind_speed**, **wind_gust**::*numeric* --  Wind direction (in degrees), speed and gust speed (in mph).
+- **precip**::*numeric* --  Precipitation, in inches.
+- **pressure**::*numeric* --  Sea level pressure in millibars.
+- **visib**::*numeric* --  Visibility in miles.
+- **time_hour**::*POSIXct* --  Date and hour of the recording as a POSIXct date.
+
+```{r, echo = FALSE}
+summary(weather)
+```
+
+## -3 & 4- Selection of destination, duration, distance, departure delay, and arrival delay
+
+The table ``flights`` contains **336776 entries**.
+
+We extract some information from the table ``flights``.
+
+```{r}
+destination <- flights$dest
+duration <- flights$air_time #actual time spent in the air
+distance <- flights$distance
+arrival_delay <- flights$arr_delay
+departure_delay <- flights$dep_delay
+```
+
+## -5 & 6- Extracting the flights to Boston and checking for NA.
+
+There are **15508 recorded flights from a New York airport** (JFK, EWR, LGA) **to Boston's Logan International Airport** (BOS).
+
+We find that there are:
+
+- **459 values missing** from column 4 "dep_time"
+- **459 values missing** from column 6 "dep_delay"
+- **480 values missing** from column 7 "arr_time"
+- **486 values missing** from column 9 "arr_delay"
+- **373 values missing** from column 12 "tailnum"
+- **486 values missing** from column 15 "air_time"
+
+```{r, message=FALSE}
+flights_to_boston <- flights %>% filter(flights$dest=="BOS")
+print(nrow(flights_to_boston))
+
+summary(flights_to_boston)
+
+na_check_df <- which(is.na(flights_to_boston), arr.ind=TRUE)
+as.data.frame(na_check_df) %>% group_by(col) %>% summarise(n = n())
+```
+
+## -7a- Frequency of time delays of Departures (in minutes)
+
+We observe that it seems that **a majority of the flights departs early** (i.e. a negative time delays). We also observe that, if early departures involve a short earliness (a few minutes), lateness is much more spread.
+
+We might suppose that the distribution follows a Poisson law with a parameter $\lambda$ between 0 and 2.
+
+```{r, message=FALSE, warning=FALSE}
+ggplot(data = flights, aes(x = dep_delay)) + 
+  labs(x = "Departure Delay (mins)", y="frequency") + 
+  geom_histogram(aes(y = stat(count) / sum(count)), fill = "#9c9abc", colour = "black", bins=100) + 
+  ggtitle("Frequency of Departure Delays in NYC airports") +
+  xlim(-50, 500) + 
+  geom_vline(xintercept = 0) +
+  scale_y_continuous(labels = scales::percent)
+
+flights_log_scale <- flights
+flights_log_scale$dep_delay <- log(flights_log_scale$dep_delay+24) #minimum value is -23
+ggplot(data = flights_log_scale, aes(x = dep_delay)) + 
+  labs(x = "Departure Delay (Log Scale)", y="frequency") + 
+  geom_histogram(aes(y = stat(count) / sum(count)), fill = "#9c9abc", colour = "black", bins=100) + 
+  ggtitle("Frequency of Departure Delays in NYC airports (log Scale)") + 
+  geom_vline(xintercept = log(24)) +
+  scale_y_continuous(labels = scales::percent)
+```
+
+## -7b- Frequency of time delay of Arrivals (in minutes)
+
+We observe that it seems that **a majority of the flights arrive early** (i.e. a negative time delays). We also observe that, if early arrivals involve a short earliness (a few minutes -- albeit with a larger spread than departures), lateness is much more spread.
+
+We might suppose that the distribution follows a Poisson law with a parameter $\lambda$ between 1 and 3.
+
+```{r, message=FALSE, warning=FALSE}
+ggplot(data = flights, aes(x = arr_delay)) + 
+  labs(x = "Arrival Delay (mins)", y="frequency") + 
+  geom_histogram(aes(y = stat(count) / sum(count)), fill = "#9c9abc", colour = "black", bins=100) + 
+  ggtitle("Frequency of Arrival Delays in NYC airports") +
+  xlim(-50, 500) + 
+  geom_vline(xintercept = 0) +
+  scale_y_continuous(labels = scales::percent)
+
+flights_log_scale <- flights
+flights_log_scale$arr_delay <- log(flights_log_scale$arr_delay+24) #minimum value is -23
+
+ggplot(data = flights_log_scale, aes(x = arr_delay)) +
+  labs(x = "Arrival Delay (Log Scale)", y="frequency") + 
+  geom_histogram(aes(y = stat(count) / sum(count)), fill = "#9c9abc", colour = "black", bins=100) + 
+  ggtitle("Frequency of Arrival Delays in NYC airports (log Scale)") + 
+  geom_vline(xintercept = log(24)) +
+  scale_y_continuous(labels = scales::percent)
+```
+
+## -8 & 9- Comparison of on-time and delayed flights per month
+
+It seems that **there is a seasonality to delays** as the amount of delays seems to be the highest during the summer months and december (which might correlate with holiday periods)
+
+```{r, message=FALSE}
+month_name <- function(m) {month.name[m]}
+
+late_TF_flights <- flights %>% 
+  mutate(delayed = (dep_delay>5)) %>%
+  group_by(month, delayed) %>% 
+  mutate(month = month_name(month)) %>%
+  summarise(count=n())
+
+level_order <- c('January', 'February', 'March', 'April', 
+                 'May', 'June', 'July', 'August', 'September',
+                 'October', 'November', 'December')
+
+ggplot(late_TF_flights, aes(fill=delayed, 
+                            y=count, 
+                            x=factor(month, level=level_order))) + 
+  geom_bar(position="dodge", stat="identity") + 
+  labs(x = "Months", y="Total Amount") +
+  ggtitle("Total amount of flights per month that is either delayed, on-time, or unknown in 2013") + 
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+```
+
+## -10- Number of flights per day
+
+The number of flights in and out of NYC seems consistent at first glance. The drop in flight on the 29th, 30th, and 31th is because of February and that only half of all months have a 31st day.
+
+```{r, message=FALSE}
+flights_per_day <- flights %>% 
+  group_by(day) %>%
+  summarise(count=n())
+
+ggplot(flights_per_day, aes(y=count, x=day, fill=day)) + 
+  geom_bar(stat="identity") + 
+  labs(x = "Day of the Month", y="Total number of flights") +
+  ggtitle("Total amount of flights in and out of NYC for each day in a month in 2013")
+```
+
+## -11- Number of flights per day of the week
+
+We see that the number of flights decreases on Saturday and Sunday. **An hypothesis is that week-day flights are boosted by business travels, which are non-existent during the week-end**, i.e. [as presented here](https://aviation.stackexchange.com/questions/16619/why-fewer-operations-on-weekends), "*Businesses work 5 days a week. Non-business travel happens 7 days a week*."
+
+```{r, message=FALSE}
+flights_per_day <-flights %>%
+  mutate(hh = round(sched_dep_time / 100, 0) - 1) %>% 
+  mutate(ymd = lubridate::ymd(sprintf("%04.0f-%02.0f-%02.0f", year, month, day), locale = "en_US.utf8")) %>% 
+  mutate(wd = lubridate::wday(ymd, label=TRUE, locale = "en_US.utf8")) %>%
+  group_by(wd) %>%
+  summarise(count=n())
+
+ggplot(flights_per_day, aes(y=count, x=wd, fill=wd)) + 
+  geom_bar(stat="identity") + 
+  labs(x = "Day of the Week", y="Total number of flights") +
+  ggtitle("Total amount of flights in and out of NYC for each day in a week in 2013")
+```
+
+## -12 & 13- Patterns on Saturdays
+
+We collect and plot the flights data of each of the 52 Saturdays in the year 2013. **We find an increase in flight during April and May as well as in July and August, and finally during Christmas and New Year's Eve**. 
+
+Based on the archive of the calendar of the [University of the District of Columbia](https://www.udc.edu/registrar/academic-calendars-archive/), we indeed observe series of breaks starting in March 2013 (including the common [Spring break](https://en.wikipedia.org/wiki/Spring_break) observed in the USA) and going forward. Furthermore, the summer months coincide with a long holiday period (the summer break in 2013 lasted from Jun. 26th to Sep. 9th).
+
+```{r, message=FALSE}
+flights_on_saturday <-flights %>%
+  mutate(hh = round(sched_dep_time / 100, 0) - 1) %>% 
+  mutate(ymd = lubridate::ymd(sprintf("%04.0f-%02.0f-%02.0f", year, month, day))) %>% 
+  mutate(wd = lubridate::wday(ymd, label=TRUE, locale = "en_US.utf8")) %>%
+  filter(wd=="Sat") %>% 
+  group_by(ymd) %>% 
+  summarize(count=n())
+
+nrow(flights_on_saturday)
+
+ggplot(flights_on_saturday, aes(y=count, x=ymd, fill=ymd)) + 
+  geom_bar(stat="identity") + 
+  labs(x = "Saturdays in the year", y="Total number of flights") +
+  ggtitle("Total amount of flights in and out of NYC for each day in a week in 2013")
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
