@@ -23,9 +23,10 @@ cdf <- function(x){
 }
 
 ps <- ParameterSet$new(id = list("lower","middle", "upper"), value = c(1,2,3),
-                       support = list(set6::Reals$new(),set6::Reals$new(),set6::Reals$new()),
+                       support = list(set6::Reals$new(),
+                                      set6::Reals$new(),
+                                      set6::Reals$new()),
                        settable = list(TRUE, TRUE, TRUE))
-print(ps)
 
 support <- set6::Interval$new(1, 3)
 type <- set6::Reals$new()
@@ -38,6 +39,8 @@ U <- Distribution$new(name = "F",
                       type = type)
 
 decorate(U, c("CoreStatistics", "ExoticStatistics", "FunctionImputation"))
+
+print(ps)
 
 U$traits
 summary(U)
