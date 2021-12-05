@@ -1,0 +1,287 @@
+---
+title: "kernel_estimator_selection_bootstrapping"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# 1 - Cross-Validation For Kernel Estimators
+
+## Overview 
+
+For the independent and identically distributed interspike intervals $X_1, ..., X_n$, let us look more carefully to the kernel estimators of the underlying density $f$. We choose $K(x)=\frac{\exp(-x^2/2)}{\sqrt{2\pi}}$. The kernel estimator with bandwidth $h$ is defined as:
+$$\hat{f}_h(u)=\frac{1}{nh}\sum^n_{i=1}K\big(\frac{u-X_i}{h}\big)$$
+
+**A** -- We implement a R function that computes, for a given vector $u$ and a given window $h$, the value $\hat{f}_h(.)$ for each coordinate of the vector $u$. We then simulate some exponential variables and try different values for $h$.
+
+**B** -- Choosing $h$ can be done with cross-validation. To do so, we rely on the least-square contrast: $$C(g) = -\frac{2}{n}\sum^n_{i=1}g(X_i) + \int g(x)^2dx$$ Such that $\mathbb{E}[C(g)]$ is minimal when $f=g$ where $g$ is a candidate density. We demonstrate that.
+
+**C** -- Using the R function `integrate`, we compute the integral of the kernel estimator $f$ to the square and implement a function to compute the least square contrast on a different sample than the one previously used.
+
+**D** -- We implement the hold-out estimator (the data is cut in half at random, half being used for estimation, and the other half for the selection of the bandwidth parameter $h$). We plot the corresponding estimator aftewards.
+
+## Step a
+
+We declare the functions $K(.)$ and $\hat{f}_h(.)$ under the name `kernel` and `kernel_estimator` espectively:
+
+```{r kernel_functions_declarations}
+
+kernel <- function(x) {
+  # Declaration of the Gaussian kernel function K(x)
+  exp(-1*x^2/2)/sqrt(2*pi)
+}
+
+kernel_estimator <- function(ISI, u, h) {
+  # Declaration of the kernel estimator
+  # note: looks like a DFT with a sliding window
+  #
+  # Formats the ISI as a matrix and retrieves its length
+  ISI = as.matrix(ISI); n = length(ISI)
+  # Precomputes the rescale factor of the kernel estimator
+  rescale_factor = 1/(n*h)
+  # Computes the estimator for each u-coordinate
+  f_hat = c()
+  for (index in 1:length(u)) {
+    kerneling = sum(apply(ISI, 1, function(x){kernel((u[index]-x)/h)}))
+    f_hat = cbind(f_hat, c(rescale_factor * kerneling))
+  }
+  # Returns the estimator
+  f_hat
+}
+
+```
+
+We now simulate a set of interspike intervals ($n=1000$) via the exponential distribution using the default rate parameter $rate=1$. Then we run our kernel estimator with a preselected vector $u=(0.0, 0.1,...,10.0)^T$ over the set of $h$-parameters $\{0.1, ..., 0.5\}$.
+
+```{r isi_simulation_and_kerneling}
+
+# Declares parameters
+n = 1000
+u_stepsize = 0.01
+u = seq(0, 9.99, u_stepsize)
+h = as.matrix(seq(0.1, 0.5, 0.1))
+
+# Simulates interspike intervals
+ISI = rexp(n)
+
+# Computes the kernel estimator for each h
+estimators = apply(h, 1, function(x) {kernel_estimator(ISI, u, x)})
+
+# Declares the end data.frame holding the estimators
+names_col = apply(h, 1, function(x){paste("h_",x,sep="")})
+estimators = as.data.frame(estimators, row.names=u)
+estimators = setNames(estimators, names_col) # naming cols within as.d.f fails for me
+
+```
+
+We can then display the resulting estimators over our preselected range of $h$ bandwidths, given the vector $u$ and our randomly generated interspike intervals.
+
+```{r print_kernel_estimators}
+
+head(estimators)
+
+```
+
+We can also visualize the resulting kernel densities truncated to the first half length of the range/vector $u$:
+
+```{r visualize_kernel_estimators, out.width="100%"}
+
+plot_kde <- function(kernel_estimates, range_to_plot=c(1:500)){
+  # Plots the KDE collected in a given data.frame
+  plot(u[range_to_plot], kernel_estimates[range_to_plot,1], 
+       type="l", col=2, ylab="Density", xlab="ISI length",
+       main="Kernel Density Estimators (KDE) given five bandwidths h")
+  for (cl in 2:(dim(kernel_estimates)[2])) {
+    lines(u[range_to_plot], kernel_estimates[range_to_plot,cl], 
+          type="l", col=cl+1)
+  }
+  legend("topright", legend=colnames(kernel_estimates), 
+         col=c(2:(dim(kernel_estimates)[2]+1)), pch="-")
+}
+
+plot_kde(estimators)
+
+```
+
+## Step b
+
+We set the least-square contrast for density $C$ such that:
+\begin{align}
+\forall i \in \{1, ..., n\}&,\,X_i\sim f,\,\text{ IID}\\
+g&,\,\text{ a candidate density}\\
+C(g) &= -\frac{2}{n}\sum^n_{i=1}g(X_i) + \int g(x)^2dx
+\end{align}
+
+As such, we can set the expectation of $C$ as such, with $g$ a candidate density:
+
+\begin{align}
+\mathbb{E}_{\forall i \in \{1, ..., n\},\,X_i\sim f}\big[C(g)\big]&=\mathbb{E}\big[-\frac{2}{n}\sum^n_{i=1}g(X_i) + \int g(x)^2dx\big]\\
+&=-\frac{2}{n}\sum^n_{i=1}\int g(x)f(x) dx + \int g(x)^2dx\\
+&=-2\int g(x)f(x) dx + \int g(x)^2dx\\
+&=\int (g(x)-f(x))^2 dx - \int f(x)^2dx
+\end{align}
+
+Given that $\int f(x)^2dx$ is a constant, $\mathbb{E}_{\forall i \in \{1, ..., n\},\,X_i\sim f}\big[C(g)\big]$ is minimal when $\int (g(x)f(x))^2 dx$ is minimal. As such, we find:
+
+\begin{align}
+\int (g(x)-f(x))^2 dx&\ge0\\
+\int (g(x)-f(x))^2 dx&=0\text{ if and only if }\forall x,\,g(x)-f(x)=0\\
+\end{align}
+
+We can conclude that $\mathbb{E}[C(g)]$ is minimal when the candidate density $g$ is equal to the density $f$ given $\forall i \in \{1, ..., n\},\,X_i\sim f,\,\text{ IID}$.
+
+## Step c
+
+We want to build and compute using the following function: $$C(f) = -\frac{2}{n}\sum^n_{i=1}f(X_i) + \int f(x)^2dx$$We can build the integral part by reusing the previously declared function `kernel_estimator`. We pre-emptively create a contrast function that can handle a train and a validation/test set for the steps d and e. 
+
+```{r constrast_function_declaration}
+
+integrate_kde <- function(kde) {
+  # Integrates a kde function over its support (here R_+)
+  integrate(Vectorize(kde), 
+            lower=0, upper = Inf, 
+            subdivisions=5000)
+}
+
+contrast_least_squares <- function(ISI_train, u, u_stepsize, h, ISI_test=NULL){
+  # Declares the least-square contrast function
+  # 
+  # Formats the ISI as a matrix and retrieves its length
+  ISI_train = as.matrix(ISI_train)
+  if (!is.null(ISI_test)) {
+    ISI_test = as.matrix(ISI_test); n = length(ISI_test)
+  } else {
+    ISI_test = as.matrix(ISI_train); n = length(ISI_train)
+  }
+  # Computes the kernel estimators and the corresponding KDE
+  estimators = kernel_estimator(ISI_train, u, h)
+  # Declares useful functions to compute the densities
+  na_check <- function(x) {if (is.na(x) || is.null(x)) {-Inf} else {x}}
+  support_check <- function(x) {if (x < min(u) || x > max(u)) {T} else {F}}
+  kde <- function(x) {
+    if (support_check(na_check(x))) {
+      0
+    } else {
+      x = as.vector(estimators)[round(x/u_stepsize)]
+      if (length(x)==0 || is.na(x)) {0} else {x}
+    }
+  }
+  kde_squared <- function(x) {kde(x)^2}
+  # Computes the relative likelihood of each X given the computed
+  # Kernel Density Estimation
+  densities = apply(ISI_test, 1, kde)
+  # Computes the corresponding integral of the kernel estimator
+  integration = integrate_kde(kde_squared)
+  #cat(paste("Integration result: ", integration,"\n"))
+  # Computes and return the contrast
+  contrast = -1*2/n*sum(unlist(densities), na.rm=T) + integration$value
+  contrast
+}
+
+```
+
+Now that we have our functions, we can generate a new sample drawn from the same exponential distribution as previously stated, but this time with $n=10000$.
+
+```{r isi_simulation_2}
+
+# Declares parameter
+n = 10000
+
+# Simulates interspike intervals
+ISI = rexp(n)
+
+```
+
+Reusing our previous parameters, we compute the contrast for the newly simulated ISI:
+
+```{r compute_contrast, out.width="100%"}
+
+# Declares parameter
+u_stepsize = 0.01
+u = seq(0, 9.99, u_stepsize)
+h = as.matrix(seq(0.001, 0.3, 0.007))
+
+# Computes the resulting contrasts
+
+contrasts = apply(h,1,function(x) {
+  contrast_least_squares(ISI, u, u_stepsize, x)
+})
+
+# Plots the given contrasts for the set of bandwidths h
+
+plot(h, contrasts, type="l",
+     xlab="Bandwidth Parameter h", ylab="Contrast",
+     main="Least-Square Contrast on a Exponential distribution Exp(1)")
+
+```
+
+The lowest contrast was achieved on the new simulation of the exponential distribution $\mathcal{E}(1)$ with the bandwidth parameter $h$ set to:
+
+```{r best_h}
+
+h[which(contrasts==min(contrasts))]
+
+```
+
+## Step d
+
+We first start by implementing the data processing pipeline for the hold-out estimator.
+
+```{r holdout_validation_process}
+
+dataset_split_holdout <- function(dataset) {
+  # We implement a hold-out dataset splitting function. It 
+  # randomly split the input data into two equal-length subsets.
+  n = length(dataset)
+  split_point = round(n/2)
+  scrambled_data = sample(dataset)
+  return(list(
+    "train"=scrambled_data[1:split_point],
+    "test"=scrambled_data[(1+split_point):n])
+  )
+}
+
+```
+
+
+## Step e
+
+# 2 - Parametric Bootstrap
+
+## Overview 
+
+## Step a
+
+## Step b
+
+## Step c
+
+## Step d
+
+## Step e
+
+## Step f
+
+# 3 - Non-Parametric Boostrap
+
+## Overview 
+
+## Step a
+
+## Step b
+
+## Step c
+
+# 4 - Clustering
+
+## Overview 
+
+## Step a
+
+## Step b
+
+## Step c
+
+## Step d
