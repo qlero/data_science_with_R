@@ -31,3 +31,9 @@ R Markdown file offering a demonstration of Fourier regression on a sinusoidal s
 ## Project 6 - Markov Chains and Markov Processes
 
 R Markdown file offering a simple simulation of Markov Chains and their continuous counterpart: Markov Processes.
+
+![markov](./assets/markov.png)
+
+#### License
+
+MIT, see `LICENSE.txt`
