@@ -22,6 +22,10 @@ $$\hat{f}_h(u)=\frac{1}{nh}\sum^n_{i=1}K\big(\frac{u-X_i}{h}\big)$$
 
 **D** -- We implement the hold-out estimator (the data is cut in half at random, half being used for estimation, and the other half for the selection of the bandwidth parameter $h$). We plot the corresponding estimator aftewards.
 
+**E** -- Let's compare $IC_1$ and $IC_2$ for various $N$ sizes. We explain why $IC_2$ cannot converge to $IC_1$ when $N$ goes towards infinity, even if it is a pretty good approximation.
+
+**F** -- We apply the previous bootstrap heuristic on the data from the package STAR to show that there is a clear difference in neuron 1 (experiment `citronellal`) between the period "before the puff", "during the puff", and "after the puff". We will change the level of the confidence interval for Bonferroni correction.
+
 ## Step a
 
 We declare the functions $K(.)$ and $\hat{f}_h(.)$ under the name `kernel` and `kernel_estimator` espectively:
@@ -386,9 +390,11 @@ plot_kde_vs_sample_dist(estimator, ISI, best_h, val_method="v-fold cross-validat
 
 We observe, by visual inspection of the plots, that the estimations with the hold-out and v-fold cross-validation perform better than the first method (which did not use any kind of validation). 
 
-In general, we find that the hold-out method tends to generally provide an equivalent or better estimation than v-fold cross-validation given the case used above (i.e. with this specific selection of $h$ bandwidth and $u$ range. Once it happened that the hold-out method found this approximation, which is very close to the actual sample density:
+In general, we find that the hold-out method tends to generally provide an equivalent or better estimation than v-fold cross-validation given the case used above (i.e. with this specific selection of $h$ bandwidth and $u$ range. Once, it happened that the hold-out and v-fold cross-validation methods found these approximations (*not during the same simulation*), which are very close to the actual sample density:
 
 ![best_case](../assets/best_case.png)
+
+![best_case2](../assets/best_case2.png)
 
 # 2 - Parametric Bootstrap
 
@@ -400,9 +406,9 @@ We present the implementation of a parametric bootstrap.
 
 **B** -- Let's compute the Maximum Likelihood Estimator (MLE) $\hat{\theta}_{obs}$ of $\theta$ for $n=50$ IID ISI modeled by an exponential distribution.
 
-**C** -- By simulating $N_simu = 10000$ times $n$ exponential variables with parameter $\theta_0 = 2$, let's compute an approximate classical confidence interval $IC_1$ on 4\theta$ with confidence $95%$.
+**C** -- By simulating $N_simu = 10000$ times $n$ exponential variables with parameter $\theta_0 = 2$, let's compute an approximate classical confidence interval $IC_1$ on 4\theta$ with confidence $95\%$.
 
-<u>Of note:</u> To do that, one can for instance compute $D_i = |\hat{\theta}_i − \theta_0 |$ on each simulation and decide that, with a c. $95%$ probability, the distance between $\hat{\theta}$ and $\theta_0$ is less than the $95%$ empirical quantile of $D_i$. this cannot be done on real data since $\theta_0$ is not known.
+<u>Of note:</u> To do that, one can for instance compute $D_i = |\hat{\theta}_i − \theta_0 |$ on each simulation and decide that, with a c. $95\%$ probability, the distance between $\hat{\theta}$ and $\theta_0$ is less than the $95\%$ empirical quantile of $D_i$. this cannot be done on real data since $\theta_0$ is not known.
 
 **D** -- By bootstrapping the data the parametric approach, let's compute a bootstrap confidence interval IC2. To do so, we simulate $N$ times $n$ exponential variables with parameter $\theta = \hat{\theta}$ and do as before with respect to the simulation.
 
@@ -440,7 +446,7 @@ hat_theta
 
 ## Step c
 
-We want to compute the $95%$ confidence interval $IC_1$ of $\theta$. To do that, we can derive $IC_1$ by preliminarily computing the $95%$ quantile of $D$: $$\forall i\in\{1, ..., n_{simulations}\},\,\,D_i = |\hat{\theta}_i − \theta_0 |$$.
+We want to compute the $95\%$ confidence interval $IC_1$ of $\theta$. To do that, we can derive $IC_1$ by preliminarily computing the $95\%$ quantile of $D$: $$\forall i\in\{1, ..., n_{simulations}\},\,\,D_i = |\hat{\theta}_i − \theta_0 |$$.
 
 ```{r parametric_bootstrap_D}
 
@@ -469,7 +475,7 @@ plot(density(distances), xlab="", ylab="",
 
 ```
 
-We compute the $95%$ quantile of $D$ and can rework the $95%$ confidence interval on $\theta$. 
+We compute the $95\%$ quantile of $D$ and can rework the $95\%$ confidence interval on $\theta$. 
 
 ```{r parametric_bootstrap_IC1}
 
@@ -478,15 +484,15 @@ compute_95CI <- function(distances, theta_0, print_msg=F) {
   quantile95_distances = quantile(distances, probs=c(0.95))
   
   # Computes and prints the resulting CI1 of theta
-  CI1 = c(theta_0-quantile95_distances, theta_0+quantile95_distances)
-  CI1 = t(as.matrix(setNames(CI1, c("2.5%", "97.5%"))))
+  CI = c(theta_0-quantile95_distances, theta_0+quantile95_distances)
+  CI = t(as.matrix(setNames(CI, c("2.5%", "97.5%"))))
   if (print_msg) {
-    cat("The classical 95% confidence interval for theta is:\n", CI1)
+    cat("The classical 95% confidence interval for theta is:\n", CI)
   }
-  CI1
+  CI
 }
 
-IC1 = compute_95CI(distances, theta_0, T)
+IC = compute_95CI(distances, theta_0, T)
 
 ```
 
@@ -555,7 +561,7 @@ differences = c(cis[,3]-cis[,1], cis[,4]-cis[,2])
 differences = matrix(differences, ncol=2)
 
 plot(differences[,1], 
-     ylim = c(min(differences), max(differences)+0.2), 
+     ylim = c(min(differences), max(differences)+abs(0.25*max(differences))), 
      type="l", col=2, xaxt="n", ylab="difference between CI1 and CI2",
      xlab="Number of simulations for bootstrapping")
 axis(1, at=c(1:12), labels=as.vector(N_range))
@@ -573,15 +579,261 @@ This is due to the theory of the bootstrap pivotal confidence interval (see pict
 
 ## Step f
 
+```{r STAR_reqs, results=FALSE,  message=FALSE}
+
+#install.packages("STAR")
+library(STAR)
+
+```
+
+We import the data:
+
+```{r puff_data_import, out.width="100%"}
+
+data(e070528citronellal)
+neuron_1 = e070528citronellal[["neuron 1"]]
+
+plot(neuron_1)
+
+```
+
+We define the following periods:
+
+- Before the puff: $t\in[0, 6.14]$
+- During the puff: $t\in]6.14, 6.64[$
+- After the puff: $t\in[6.64, c. 13]$
+
+We now retrieve the 15 simulations' spike data into three sets as vectors.
+
+```{r puff_data_extraction}
+
+spike_data_extract <- function(neuron_data, lower=NULL, upper=NULL){
+  # Function to extract spike data in a given time frame and return
+  # the corresponding ISI
+  ISI=c()
+  for (sim in 1:length(neuron_data)){
+    sim_spikes = as.vector(neuron_1[[sim]])
+    if (is.null(lower)){
+      indexes = which((sim_spikes>=upper))
+    } else if (is.null(upper)) {
+      indexes = which((sim_spikes<=lower))
+    } else {
+      indexes = which((sim_spikes>lower)&(sim_spikes<upper))
+    }
+    ISI = c(ISI, diff(sim_spikes[indexes]))
+  }
+  return(list("ISI"=ISI, 
+              "theta_hat"=1/(mean(ISI)-min(ISI))))
+}
+
+data_before = spike_data_extract(neuron_1, 6.14, NULL)
+data_during = spike_data_extract(neuron_1, 6.14, 6.65)
+data_after  = spike_data_extract(neuron_1, NULL, 6.65)
+
+```
+
+We plot the extracted datasets against each other:
+
+```{r ISI_distributions, out.width="100%"}
+
+plot(density(data_during$ISI), type="l", col=2, xlab="ISI", ylab="",
+     "Distribution of ISI dependent on the timeframe")
+lines(density(data_before$ISI), type="l", col=3)
+lines(density(data_after$ISI), type="l", col=4)
+legend("topright", legend=c("During Puff", "Before Puff", "After Puff"),
+        col=c(2,3,4),pch="-")
+
+```
+
+We clearly see that there is a discrepancy between the distributions. We now have to show it statistically. We first start by declaring our functions:
+
+```{r functions_CI_with_bonferroni}
+
+compute_distances_bootstrap_bonferroni <- function(N, observations, theta) {
+  # Computes the MLE of each simuation
+  hat_theta_sims = apply(matrix(1:n_simulations), 1, 
+                         function(x) {hat_theta_obs(
+                           sample(observations, n, replace=T)
+                         )})
+  # Computes the difference/distance between each MLE and the 
+  # real parameter theta_0
+  abs(theta-hat_theta_sims)
+}
+
+compute_95CI_bonferroni <- function(distances, theta, k_tests, print_msg=F) {
+  # Computes the 95% quantile of the distances between a boostrapped sample
+  # of ISI, given a Bonferroni correction
+  quantile95_distances = quantile(distances, probs=c(1-0.5/k_tests))
+  # Computes and prints the resulting CI1 of theta
+  CI = c(theta-quantile95_distances, theta+quantile95_distances)
+  CI = t(as.matrix(setNames(CI, c("2.5%", "97.5%"))))
+  if (print_msg) {
+    cat("The classical 95% confidence interval",
+        "with Bonferroni correction for theta is:\n", CI,"\n")
+  }
+  CI
+}
+
+```
+
+We now can compute the 95% confidence interval with Bonferroni correction. Here the number of tests of level $\alpha=0.05$ is $3$ since we do one confidence interval per dataset (before, during, after). For the bootstrapping, we reuse the previous number of simulations $N=10000$.
+
+```{r compute_CI_with_bonferroni}
+
+N=10000
+
+distances = compute_distances_bootstrap_bonferroni(N, data_before$ISI, data_before$theta_hat)
+ICbefore = compute_95CI_bonferroni(distances, data_before$theta_hat, 3, T)
+
+distances = compute_distances_bootstrap_bonferroni(N, data_during$ISI, data_during$theta_hat)
+ICduring = compute_95CI_bonferroni(distances, data_during$theta_hat, 3, T)
+
+distances = compute_distances_bootstrap_bonferroni(N, data_after$ISI, data_after$theta_hat)
+ICafter = compute_95CI_bonferroni(distances, data_after$theta_hat, 3, T)
+
+```
+
+As such, we evidence that there is a clear distinction between the three periods in terms of confidence interval of the underlying parameter $\theta$. 
+
 # 3 - Non-Parametric Boostrap
 
 ## Overview 
 
+Reusing the previous data of the STAR package, we will perform non-parametric bootstrap (with firing rates instead of ISI). Let's compute to compute non parametric bootstrap confidence intervals on the firing rates. A firing rate is defined by the average number of spikes per second.
+
+**A** -- Let's compute an estimation of the firing rate for each of the three periods for the experiment `citronellal` and for each of the trials.
+
+**B** -- Let's code a function for computing the bootstrap confidence interval on the mean at a given level $\alpha$. Then let's test it on simulated data to see if it works.
+
+**C** -- Let's apply it on the estimated firing rates of each period in **A** and see if it can be concluded non-parametrically on a difference between the three periods in terms of firing rates.
+
 ## Step a
+
+To compute an estimation of the firing rate, we decide to take the average firing rate per second over each of the three periods outlined in the previous section. We first declare the corresponding function
+
+```{r firing_rates_function}
+
+firing_rate_extract <- function(neuron_data, lower=NULL, upper=NULL){
+  # Function to extract spike data in a given time frame and return
+  # the corresponding ISI
+  #
+  # Data extraction function
+  spike_extract <- function(sim){
+    sim_spikes = as.vector(neuron_1[[sim]])
+    if (is.null(lower)){
+      indexes = which((sim_spikes>=upper))
+    } else if (is.null(upper)) {
+      indexes = which((sim_spikes<=lower))
+    } else {
+      indexes = which((sim_spikes>lower)&(sim_spikes<upper))
+    }
+    sim_spikes[indexes]
+  }
+  # Extracts the spike data
+  spikes=c()
+  n_simulations = as.matrix(c(1:length(neuron_data)))
+  spikes = apply(n_simulations, 1, spike_extract)
+  # Computes the firing rate for each of the 3 periods and 15 simulations
+  firing_rates = apply(n_simulations, 1, 
+                       function(x){
+                         length(spikes[[x]])/(max(spikes[[x]])-min(spikes[[x]]))
+                      })
+  return(list("spikes"=spikes, 
+              "firing_rates"=firing_rates))
+}
+
+```
+
+We now extract the data and compute the corresponding firing rates.
+
+```{r firing_rates_computation}
+
+data_before = firing_rate_extract(neuron_1, 6.14, NULL)
+data_during = firing_rate_extract(neuron_1, 6.14, 6.65)
+data_after  = firing_rate_extract(neuron_1, NULL, 6.65)
+
+```
+
+With the firing rate computes, we can visualize them for each simulation.
+
+```{r firing_rates_visualization, out.width="100%"}
+
+plot(data_before$firing_rates, pch="+",
+     ylim=c(0,max(data_during$firing_rates)+10), col=2,
+     xlab="Experiment number", ylab="Recorded firing rate",
+     main=paste("Firing rate during each period for all experiments", 
+                "\non Neuron 1 (citronellal)")
+)
+points(data_during$firing_rates, pch="+", col=3)
+points(data_after$firing_rates, pch="+", col=4)
+legend("topright", legend=c("During Puff", "Before Puff", "After Puff"),
+        col=c(2,3,4),pch="+")
+
+```
 
 ## Step b
 
+We build a non-parametric bootstrap function for the mean confidence interval:
+
+```{r non_param_bootstrap_function}
+
+mean_CI_bootstrap <- function(data, n_simulations, alpha, print_msg=F) {
+  # Performs a bootstrap of the mean of a given data
+  #
+  # Computes preliminary parameters
+  n = length(data)
+  sample_mean = mean(data)
+  # Bootstraps the data with unknown mean
+  bootstrapped_data = t(apply(
+    matrix(c(1:n_simulations)), 1,
+    function(x) {sample(data, n, replace=T)}
+  ))
+  # Computes a sample mean for each bootstrapped sample
+  bootstrapped_means = apply(bootstrapped_data, 1, mean)
+  # Computes the distance between bootstrapped means and sample mean
+  bootstrapped_dists = bootstrapped_means - sample_mean
+  # Computes the bootstrapped confidence interval at level 1-alpha
+  q_alpha_div_2 = quantile(bootstrapped_dists, prob=c(alpha/2))
+  q_1_plus_alpha_div_2 = quantile(bootstrapped_dists, prob=c(1-alpha/2))
+  CI = c(sample_mean+q_alpha_div_2, sample_mean+q_1_plus_alpha_div_2)
+  # Prints result
+  if (print_msg) {
+    cat(paste("The", (1-alpha)*100, "% bootstrapped confidence interval for the",
+              "given data is:\n"))
+  }
+  # Returns
+  CI
+}
+
+```
+
+We generate a normal distribution with 10 elements with mean $\mu=0$ and standard deviation $\sigma=1$, and compute its $95\%$ bootstrapped confidence interval for the mean with $N_{simulation}=10000$ as an example:
+
+```{r bootstrap_meanCI_simulated_data}
+
+n_simulations = 10000
+data = rnorm(10, 0, 1)
+mean_CI_bootstrap(data, n_simulations, 0.05, print_msg=T)
+
+```
+
+We see that the real mean $\mu=0$ falls into the bootstrapped confidence interval for the mean.
+
 ## Step c
+
+We compute a $95\%$ bootstrapped confidence interval for the mean of each period, with $N_{simulation}=10000$. 
+
+```{r bootstrap_meanCI_neuron_data}
+
+mean_CI_bootstrap(data_before$firing_rates, n_simulations, 0.05, print_msg=T)
+
+mean_CI_bootstrap(data_during$firing_rates, n_simulations, 0.05, print_msg=T)
+
+mean_CI_bootstrap(data_after$firing_rates, n_simulations, 0.05, print_msg=T)
+
+```
+
+We find that the $95\%$ confidence intervals for each period tend to not overlap with each other (Note: in few cases the confidence intervals for the means before and after the puff overlap at their respective upper and lower bounds), indicating that there is a difference between the three periods in terms of firing rates.
 
 # 4 - Clustering
 
