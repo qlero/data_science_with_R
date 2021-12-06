@@ -26,7 +26,7 @@ $$\hat{f}_h(u)=\frac{1}{nh}\sum^n_{i=1}K\big(\frac{u-X_i}{h}\big)$$
 
 **F** -- We apply the previous bootstrap heuristic on the data from the package STAR to show that there is a clear difference in neuron 1 (experiment `citronellal`) between the period "before the puff", "during the puff", and "after the puff". We will change the level of the confidence interval for Bonferroni correction.
 
-## Step a
+## Step A
 
 We declare the functions $K(.)$ and $\hat{f}_h(.)$ under the name `kernel` and `kernel_estimator` espectively:
 
@@ -109,7 +109,7 @@ plot_kde(estimators)
 
 ```
 
-## Step b
+## Step B
 
 We set the least-square contrast for density $C$ such that:
 \begin{align}
@@ -136,7 +136,7 @@ Given that $\int f(x)^2dx$ is a constant, $\mathbb{E}_{\forall i \in \{1, ..., n
 
 We can conclude that $\mathbb{E}[C(g)]$ is minimal when the candidate density $g$ is equal to the density $f$ given $\forall i \in \{1, ..., n\},\,X_i\sim f,\,\text{ IID}$.
 
-## Step c
+## Step C
 
 We want to build and compute using the following function: $$C(f) = -\frac{2}{n}\sum^n_{i=1}f(X_i) + \int f(x)^2dx$$We can build the integral part by reusing the previously declared function `kernel_estimator`. We pre-emptively create a contrast function that can handle a train and a validation/test set for the steps d and e. 
 
@@ -258,7 +258,7 @@ plot_kde_vs_sample_dist(estimator, ISI, best_h)
 
 We clearly see that the resulting bandwidth parameter $h$ does not help fit the actual distribution. We need to find a better way to determine which $h$ is the best. This will be looked at in the next step with cross-validation.
 
-## Step d
+## Step D
 
 In order to perform hold-out validation, we first start by implementing the data processing pipeline for the hold-out estimator.
 
@@ -317,7 +317,7 @@ plot_kde_vs_sample_dist(estimator, ISI, best_h, val_method="hold-out")
 
 ```
 
-## Step e
+## Step E
 
 In order to implement our cross-validation, we implement a specifically design loop function to iterate over both the available data and the set of possible bandwidth parameters $h$.
 
@@ -386,7 +386,7 @@ plot_kde_vs_sample_dist(estimator, ISI, best_h, val_method="v-fold cross-validat
 
 ```
 
-### Note on step d and e
+### Note on Step D and e
 
 We observe, by visual inspection of the plots, that the estimations with the hold-out and v-fold cross-validation perform better than the first method (which did not use any kind of validation). 
 
@@ -414,7 +414,7 @@ We present the implementation of a parametric bootstrap.
 
 **E** -- Let's compare $IC_1$ and $IC_2$ for various size of $N$. Let's also explain why $IC_2$ cannot converge to $IC_1$ when $N\rightarrow+\infty$, even if it is a pretty good approximation.
 
-## Step a
+## Step A
 
 ```{r parametric_bootstrap_simulation}
 
@@ -427,7 +427,7 @@ observations = rexp(n, theta_0)
 
 ```
 
-## Step b
+## Step B
 
 The parametric approach informs us that the MLE for IID ISI modeled by an exponential distribution is the following: $\hat{\theta}_{obs}=\frac{1}{\bar{X}}$ with $\bar{X}$ the sample mean of the observations. The proof can be found here: [StatLect](https://www.statlect.com/fundamentals-of-statistics/exponential-distribution-maximum-likelihood) (last accessed, Dec 5, 2021).
 
@@ -444,7 +444,7 @@ hat_theta
 
 ```
 
-## Step c
+## Step C
 
 We want to compute the $95\%$ confidence interval $IC_1$ of $\theta$. To do that, we can derive $IC_1$ by preliminarily computing the $95\%$ quantile of $D$: $$\forall i\in\{1, ..., n_{simulations}\},\,\,D_i = |\hat{\theta}_i − \theta_0 |$$.
 
@@ -496,9 +496,9 @@ IC = compute_95CI(distances, theta_0, T)
 
 ```
 
-## Step d
+## Step D
 
-We reuse the content used in steps A and B for the following steps. To perform the parametric bootstrapping, we arbitrarily set $N=10000$ as with step C.  
+We reuse the content used in steps A and B for the following steps. To perform the parametric bootstrapping, we arbitrarily set $N=10000$ as with Step C.  
 
 ```{r parametric_bootstrap_IC2}
 
@@ -526,7 +526,7 @@ IC2 = compute_95CI(distances, hat_theta, T)
 
 ```
 
-## Step e
+## Step E
 
 We reuse the previous process, varying $N$ from $10$ to $1e12$ by order of grandeurs.
 
@@ -577,7 +577,7 @@ This is due to the theory of the bootstrap pivotal confidence interval (see pict
 
 ![bootstrap](../assets/bootstrap_theory.png)
 
-## Step f
+## Step F
 
 ```{r STAR_reqs, results=FALSE,  message=FALSE}
 
@@ -707,7 +707,7 @@ Reusing the previous data of the STAR package, we will perform non-parametric bo
 
 **C** -- Let's apply it on the estimated firing rates of each period in **A** and see if it can be concluded non-parametrically on a difference between the three periods in terms of firing rates.
 
-## Step a
+## Step A
 
 To compute an estimation of the firing rate, we decide to take the average firing rate per second over each of the three periods outlined in the previous section. We first declare the corresponding function
 
@@ -771,7 +771,7 @@ legend("topright", legend=c("Before Puff", "During Puff", "After Puff"),
 
 ```
 
-## Step b
+## Step B
 
 We build a non-parametric bootstrap function for the mean confidence interval:
 
@@ -819,7 +819,7 @@ mean_CI_bootstrap(data, n_simulations, 0.05, print_msg=T)
 
 We see that the real mean $\mu=0$ falls into the bootstrapped confidence interval for the mean.
 
-## Step c
+## Step C
 
 We compute a $95\%$ bootstrapped confidence interval for the mean of each period, with $N_{simulation}=10000$. 
 
@@ -837,24 +837,234 @@ We find that the $95\%$ confidence intervals for each period tend to not overlap
 
 # 4 - Clustering
 
+## Overview 
+
 86 neurons of the striatum of a rat performing a spatial task have been recorded. The attached file `action_potential.Rdata` contains the average shape of their action potential as recorded by tetrodes. Typing `load(action_potential.Rdata)` will provide a variable `Record` (a list). `Record[[i]]` is a matrix with 32 lines and 86 columns (one column=one neuron), the index $i$ refers to the electrode number $i$ of the tetrode. The line $j$ in the matrix corresponds to the value of the action potential at $j ∗ 0.0001$ second after the beginning of the action potential.
 
 **A** -- Let's plot for some neurons the superposition of the 4 forms that are corresponding to the action potential as seen by each of the electrodes. We will see that the heights of the signal are very differents. This comes from the proximity of the electrodes. We will also see and that the highest signal is not always recorded by the same electrode.
 
-**B** -- Let's focus on the best shape, i.e., the shape with the heighest peak on all electrodes. On this curve, we extract two parameters that represents the action potential: the duration of the peak above half its height, the delay between the time of the valley after the peak and the time of the peak. Let's extract these two values for each of the neuron.
+**B** -- Let's focus on the best shape, i.e., the shape with the highest peak on all electrodes. On this curve, we extract two parameters that represents the action potential: the duration of the peak above half its height, the delay between the time of the valley after the peak and the time of the peak. Let's extract these two values for each of the neuron.
 
 **C** -- Before doing hierarchical clustering, let's center and renormalize both quantities (as when doing PCA) and put the result into a matrix $x$ with 2 columns and 86 rows. Then, let's use `plot(hclust(dist(x),method="ward.D2"))` to see the dendogram. Find the largest distance between clusters and cut the tree there. Conclude that clearly we have two clusters.
 
-<u>Of note:</u> *The dendogram is a visual representation of the data. The two closest points are merged together and represented by their middle (or barycenter) then the algorithm continue and can eventually merge points and barycenters, or two barycenters together until everything is merged. This process of merging is plot as a tree : when two quantities with different heights are merged there are new branches growing and the shortest one correspond to the distance between the centers.*
+<u>Of note:</u> *The dendrogram is a visual representation of the data. The two closest points are merged together and represented by their middle (or barycenter) then the algorithm continue and can eventually merge points and barycenters, or two barycenters together until everything is merged. This process of merging is plot as a tree: when two quantities with different heights are merged there are new branches growing and the shortest one correspond to the distance between the centers.*
 
 **D** -- The commands `z=kmeans(x,2)` and `z$cluster` give the cluster label for the different neurons. Plot the neurons in the plane of the two variables with a different color code for the first cluster and second cluster as estimated by k-means. You have identified the "fast spiking interneurons" (the ones with small durations for each delays) and the "medium spiny neurons").
 
-## Overview 
+## Step A
 
-## Step a
+We start by importing the data:
 
-## Step b
+```{r action_potential_import}
 
-## Step c
+load("./data/action_potential.Rdata")
+action_potentials = Record
 
-## Step d
+cat(paste("Number of electrodes in the tetrode available:", length(action_potentials)))
+cat(paste("Number of neurons available:", dim(action_potentials[[1]])[2]))
+cat(paste("Number of recorded action potential timesteps available per neuron:", 
+          dim(action_potentials[[1]])[1]))
+
+```
+
+Once the data is imported, we declare a plotting function to plot selections of neurons from the available data (acquired via each electrode).
+
+```{r electrode_neuron_plot_function}
+
+plot_neuron_data <- function(neuron_number, action_potentials, print_plot=T) {
+  # Given a neuron number/index, fetches the corresponding action potential
+  # data recorded by each of the four available electrodes and plots the results
+  electrode_indexes = matrix(1:4)
+  # Retrieves the neuron data recorded by each electrode
+  AP_data = apply(electrode_indexes, 1, 
+                  function(x) {action_potentials[[x]][,neuron_number]})
+  AP_data = as.data.frame(AP_data, row.names=c(1:32))
+  AP_data = setNames(AP_data, c("electrode_1", "electrode_2", "electrode_3", "electrode_4"))
+  # Plots the retrieved data if indicated, if print_plot=F, the function
+  # only returns the data
+  if (print_plot){
+    plot.ts(AP_data,cex.lab=0.8, 
+            main=paste("Neuron", neuron_number, "'s AP, as recorded",
+                       "by the tetrode's 4 electrodes"))
+  }
+  # Returns the retrieved data
+  return(AP_data)
+}
+
+```
+
+We select four random neurons and plots their action potentials with the previously declared functions.
+
+```{r plot_neuron_action_potentials, out.width="100%"}
+
+neuron_numbers = sample(c(1:dim(action_potentials[[1]])[2]), 4, replace=F)
+for (i in neuron_numbers) {
+  data = plot_neuron_data(i, action_potentials)
+}
+
+```
+
+To see which electrode recorded the highest signal for each neuron, we extract the whole data into a dataframe.
+
+```{r find_highest_signal}
+
+# Retrieves all neurons' AP for all electrodes
+full_data = apply(matrix(1:86), 1, function(x) {
+                    plot_neuron_data(x, action_potentials, print_plot=F)})
+
+find_electrode_with_highest_signal <- function(full_data){
+  # Computes, for each neuron, the electrode that recorded the highest signal
+  neuron_indexes = matrix(1:length(full_data))
+  apply(neuron_indexes, 1, function(x) {
+    round((which(as.matrix(full_data[[x]])==max(full_data[[x]])))/32+1)})
+}
+
+# Computes the electrode with the best record per neuron
+best_electrodes = find_electrode_with_highest_signal(full_data)
+best_electrodes = matrix(best_electrodes, nrow=length(full_data))
+row.names(best_electrodes) = c(1:length(full_data))
+colnames(best_electrodes) = c("electrode_with_best_record")
+
+```
+
+We now visualize our result:
+
+```{r visualize_highest_signals}
+
+table(best_electrodes)
+
+```
+
+We see that in general, the electrodes 2 and 3 recorded the most times the highest signal, while the electrode 4 recorded the highest signal the lowest amount of times among the 86 neurons.
+
+## Step B
+
+We create a function to output the vector $(\text{peak_to_valley_length}, \text{peak_duration})$ from the best available action potential shape per neuron.
+
+```{r parametrizing_action_potentials}
+
+parametrize_action_potentials <- function(data, best_electrode){
+  # Computes the (peak_to_valley_length,peak_duration) based on the input
+  # data and the list of best electrodes computed at the previous step
+  #
+  # Retrieves data
+  best_shape_data = data[,best_electrode]
+  # Computes intermediary values
+  nb_action_potentials = length(best_shape_data)
+  peak_value = max(best_shape_data)
+  bottom_value = min(best_shape_data)
+  peak_index = which(best_shape_data == peak_value)
+  pre_peak_data = best_shape_data[1:(peak_index)] # note:
+  #   we include the peak point if the jump is too sharp
+  post_peak_data = best_shape_data[(peak_index+1):nb_action_potentials]
+  next_bottom_value = min(post_peak_data)
+  next_bottom_index = peak_index + which(post_peak_data == next_bottom_value)
+  half_height = (peak_value - bottom_value)/2
+  pre_peak_half_height_index = which(pre_peak_data>half_height)[1]
+  post_peak_half_height_index = which(post_peak_data<half_height)[1]
+  # Computes output value
+  peak_to_valley_length = next_bottom_index-peak_index
+  peak_duration = (peak_index + post_peak_half_height_index) - pre_peak_half_height_index
+  # Returns result
+  return(list("peak_to_valley_length"=peak_to_valley_length,
+              "peak_duration"=peak_duration))
+}
+
+parameters = apply(matrix(1:length(full_data)), 1, 
+                   function(x){parametrize_action_potentials(
+                     full_data[[x]],
+                     best_electrodes[x]
+                   )})
+
+```
+
+We display the first five results:
+
+```{r print_parameters}
+
+for (neuron in 1:5){
+  cat("Case: Neuron", neuron,"\n")
+  cat("The peak to valley duration was: c.", 
+      parameters[[neuron]]$peak_to_valley_length * 0.0001, 
+      "seconds.\n")
+  cat("The peak duration was: c.", 
+      parameters[[neuron]]$peak_duration * 0.0001, 
+      "seconds.\n\n")
+}
+
+```
+
+## Step C
+
+We start by reformatting our data into a $86\times2$ matrix and standardizing its content:
+
+```{r parameter_matrix_reformatting}
+
+parameters = t(matrix(unlist(parameters),nrow=2,ncol=86))
+row.names(parameters) = c(1:length(full_data))
+colnames(parameters) = c("peak_to_valley_length", "peak_duration")
+standardize <- function(x){(x-min(x))/(max(x)-min(x))}
+normalized_parameters = apply(parameters, 2, standardize)
+
+```
+
+We now compute the dendrogram of the centered and normalized set of data:
+
+```{r hierarchical_clustering, out.width="100%"}
+
+clustering = hclust(dist(normalized_parameters),method="ward.D2")
+plot(clustering)
+axis(1, cex.axis = 0.7)
+
+```
+We want to find the largest distance between clusters and cut the tree there. Iterating over the sequence $\{0.25, 0.5,...,2.75\}$ and then trying with an infinite height, we visualize the resulting dendrogram clustering.
+We find that the larest distance between clusters is achieved once height reaches a value between $1.25$ and $1.5$.
+
+```{r cluster_visualization, out.width="60%"}
+
+for (i in c(seq(0.25,2.75, 0.25),Inf)){
+  plot(clustering, xlab="",main=paste("Cluster dendrogram with height=",i),sub="")
+  rect.hclust(clustering,h = i,border=c(2:3))
+  axis(1, cex.axis = 0.7)
+}
+
+```
+
+As such, we can confidently say that we have two distinct clusters of action potentials such that:
+
+```{r cluster_visualization_final, out.width="100%"}
+
+plot(clustering, xlab="", sub="",
+     main= "Cluster Dendrogram with k=2")
+rect.hclust(clustering,k=2,border=c(2:3))
+axis(1, cex.axis = 0.7)
+
+```
+
+## Step D
+
+We plot the neurons in the plane of the two previously declared variables with a different color code for each cluster as estimated by a k-means method. We have identified "fast spiking interneurons" (i.e. neurons with small durations for each delays) and the "medium spiny neurons".
+
+```{r kmeans, out.width="100%"}
+
+# Computes clustering with kmeans
+z = kmeans(normalized_parameters, 2)
+
+# Determines the color order for FSI
+if (z$cluster[unique(which(normalized_parameters[,1]==min(normalized_parameters[,1])))][1]==1){
+  colors = c(2,3)
+} else {
+  colors = c(3,2)
+}
+
+# Plots
+plot(jitter(normalized_parameters,10), col=z$cluster+1,
+     xlab="Normalized duration of the delay from peak to valley",
+     ylab="Normalized duration of a peak",
+     main="Clustering of neurons given their spiking characteristics",
+     sub="Low jitter of 10 added for display purposes", pch="+")
+legend("topleft",col=colors,
+       legend=c("fast spiking interneurons", "medium spiny neurons"),
+       pch="+")
+
+```
