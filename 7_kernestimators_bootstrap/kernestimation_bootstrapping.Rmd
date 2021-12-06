@@ -766,7 +766,7 @@ plot(data_before$firing_rates, pch="+",
 )
 points(data_during$firing_rates, pch="+", col=3)
 points(data_after$firing_rates, pch="+", col=4)
-legend("topright", legend=c("During Puff", "Before Puff", "After Puff"),
+legend("topright", legend=c("Before Puff", "During Puff", "After Puff"),
         col=c(2,3,4),pch="+")
 
 ```
@@ -836,6 +836,18 @@ mean_CI_bootstrap(data_after$firing_rates, n_simulations, 0.05, print_msg=T)
 We find that the $95\%$ confidence intervals for each period tend to not overlap with each other (Note: in few cases the confidence intervals for the means before and after the puff overlap at their respective upper and lower bounds), indicating that there is a difference between the three periods in terms of firing rates.
 
 # 4 - Clustering
+
+86 neurons of the striatum of a rat performing a spatial task have been recorded. The attached file `action_potential.Rdata` contains the average shape of their action potential as recorded by tetrodes. Typing `load(action_potential.Rdata)` will provide a variable `Record` (a list). `Record[[i]]` is a matrix with 32 lines and 86 columns (one column=one neuron), the index $i$ refers to the electrode number $i$ of the tetrode. The line $j$ in the matrix corresponds to the value of the action potential at $j ∗ 0.0001$ second after the beginning of the action potential.
+
+**A** -- Let's plot for some neurons the superposition of the 4 forms that are corresponding to the action potential as seen by each of the electrodes. We will see that the heights of the signal are very differents. This comes from the proximity of the electrodes. We will also see and that the highest signal is not always recorded by the same electrode.
+
+**B** -- Let's focus on the best shape, i.e., the shape with the heighest peak on all electrodes. On this curve, we extract two parameters that represents the action potential: the duration of the peak above half its height, the delay between the time of the valley after the peak and the time of the peak. Let's extract these two values for each of the neuron.
+
+**C** -- Before doing hierarchical clustering, let's center and renormalize both quantities (as when doing PCA) and put the result into a matrix $x$ with 2 columns and 86 rows. Then, let's use `plot(hclust(dist(x),method="ward.D2"))` to see the dendogram. Find the largest distance between clusters and cut the tree there. Conclude that clearly we have two clusters.
+
+<u>Of note:</u> *The dendogram is a visual representation of the data. The two closest points are merged together and represented by their middle (or barycenter) then the algorithm continue and can eventually merge points and barycenters, or two barycenters together until everything is merged. This process of merging is plot as a tree : when two quantities with different heights are merged there are new branches growing and the shortest one correspond to the distance between the centers.*
+
+**D** -- The commands `z=kmeans(x,2)` and `z$cluster` give the cluster label for the different neurons. Plot the neurons in the plane of the two variables with a different color code for the first cluster and second cluster as estimated by k-means. You have identified the "fast spiking interneurons" (the ones with small durations for each delays) and the "medium spiny neurons").
 
 ## Overview 
 
