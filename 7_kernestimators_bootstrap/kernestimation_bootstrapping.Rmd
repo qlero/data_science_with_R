@@ -11,34 +11,34 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Overview 
 
-For the independent and identically distributed interspike intervals $X_1, ..., X_n$, let us look more carefully to the kernel estimators of the underlying density $f$. We choose $K(x)=\frac{\exp(-x^2/2)}{\sqrt{2\pi}}$. The kernel estimator with bandwidth $h$ is defined as:
+Given independent and identically distributed interspike intervals $X_1, ..., X_n$, let us look at the kernel estimators of an underlying density $f$. We choose $K(x)=\frac{\exp(-x^2/2)}{\sqrt{2\pi}}$. The kernel estimator with bandwidth $h$ is then defined as:
 $$\hat{f}_h(u)=\frac{1}{nh}\sum^n_{i=1}K\big(\frac{u-X_i}{h}\big)$$
 
-**A** -- We implement a R function that computes, for a given vector $u$ and a given window $h$, the value $\hat{f}_h(.)$ for each coordinate of the vector $u$. We then simulate some exponential variables and try different values for $h$.
+**A** -- Let's implement a function that computes, for a given vector $u$ and a given window $h$, the value $\hat{f}_h(.)$ for each coordinate of the vector $u$. Then let's simulate exponential variables and apply the kernel estimator with different values for $h$.
 
-**B** -- Choosing $h$ can be done with cross-validation. To do so, we rely on the least-square contrast: $$C(g) = -\frac{2}{n}\sum^n_{i=1}g(X_i) + \int g(x)^2dx$$ Such that $\mathbb{E}[C(g)]$ is minimal when $f=g$ where $g$ is a candidate density. We demonstrate that.
+**B** -- Choosing $h$ can be done with cross-validation: Let's rely on the least-square contrast: $$C(g) = -\frac{2}{n}\sum^n_{i=1}g(X_i) + \int g(x)^2dx$$ Such that $\mathbb{E}[C(g)]$ is minimal when $f=g$ where $g$ is a candidate density. Let's demonstrate that state.
 
-**C** -- Using the R function `integrate`, we compute the integral of the kernel estimator $f$ to the square and implement a function to compute the least square contrast on a different sample than the one previously used.
+**C** -- Using the function `integrate`, let's compute the integral of the kernel estimator $f$ to the square and implement a function that computes the least square contrast on a different sample than the one previously simulated.
 
-**D** -- We implement the hold-out estimator (the data is cut in half at random, half being used for estimation, and the other half for the selection of the bandwidth parameter $h$). We plot the corresponding estimator aftewards.
+**D** -- Let's implement the hold-out estimator: The data is cut in half at random, half to be used for estimation, and the other half for the selection of the bandwidth parameter $h$. Then let's plot the corresponding estimator.
 
-**E** -- Let's compare $IC_1$ and $IC_2$ for various $N$ sizes. We explain why $IC_2$ cannot converge to $IC_1$ when $N$ goes towards infinity, even if it is a pretty good approximation.
+**E** -- Let's compare $IC_1$ and $IC_2$ for various $N$ sizes, then explain why $IC_2$ cannot converge to $IC_1$ when $N$ goes towards infinity (even if it is a pretty good approximation).
 
-**F** -- We apply the previous bootstrap heuristic on the data from the package STAR to show that there is a clear difference in neuron 1 (experiment `citronellal`) between the period "before the puff", "during the puff", and "after the puff". We will change the level of the confidence interval for Bonferroni correction.
+**F** -- Let's apply the previous bootstrap heuristic on the STAR-package data to show that there is a clear difference in neuron 1 (experiment `citronellal`) between the period "before the puff", "during the puff", and "after the puff" (See STAR documentation). The level of the confidence interval will be updated to account for Bonferroni correction.
 
 ## Step A
 
-We declare the functions $K(.)$ and $\hat{f}_h(.)$ under the name `kernel` and `kernel_estimator` espectively:
+Let's declare the functions $K(.)$ and $\hat{f}_h(.)$ under the name `kernel` and `kernel_estimator` espectively:
 
 ```{r kernel_functions_declarations}
 
 kernel <- function(x) {
-  # Declaration of the Gaussian kernel function K(x)
+  # Declares of the Gaussian kernel function K(x)
   exp(-1*x^2/2)/sqrt(2*pi)
 }
 
 kernel_estimator <- function(ISI, u, h) {
-  # Declaration of the kernel estimator
+  # Declares of the kernel estimator
   # note: looks like a DFT with a sliding window
   #
   # Formats the ISI as a matrix and retrieves its length
@@ -57,7 +57,7 @@ kernel_estimator <- function(ISI, u, h) {
 
 ```
 
-We now simulate a set of interspike intervals ($n=100$) via the exponential distribution using the default rate parameter $rate=1$. Then we run our kernel estimator with a preselected vector $u=(0.0, 0.1,...,10.0)^T$ over the set of $h$-parameters $\{0.1, ..., 0.5\}$.
+Now, let's simulate a set of interspike intervals ($n=100$) via the exponential distribution using the default rate parameter $\lambda=1$. Then let's run the kernel estimator with a preselected vector $u=(0.0, 0.1,...,10.0)^T$ over the set of $h$-bandwidth parameters $\{0.1, ..., 0.5\}$.
 
 ```{r isi_simulation_and_kerneling}
 
@@ -80,7 +80,7 @@ estimators = setNames(estimators, names_col) # naming cols within as.d.f fails f
 
 ```
 
-We can then display the resulting estimators over our preselected range of $h$ bandwidths, given the vector $u$ and our randomly generated interspike intervals.
+Let's display the resulting estimators over the preselected range of $h$ bandwidths, given the vector $u$ and the randomly generated interspike intervals.
 
 ```{r print_kernel_estimators}
 
@@ -88,7 +88,7 @@ head(estimators)
 
 ```
 
-We can also visualize the resulting kernel densities truncated to the first half length of the range/vector $u$:
+Now, let's visualize the resulting kernel densities, truncated to the first half length of the range/vector $u$:
 
 ```{r visualize_kernel_estimators, out.width="100%"}
 
@@ -111,14 +111,14 @@ plot_kde(estimators)
 
 ## Step B
 
-We set the least-square contrast for density $C$ such that:
+Let's set the least-square contrast for density $C$ such that:
 \begin{align}
 \forall i \in \{1, ..., n\}&,\,X_i\sim f,\,\text{ IID}\\
 g&,\,\text{ a candidate density}\\
 C(g) &= -\frac{2}{n}\sum^n_{i=1}g(X_i) + \int g(x)^2dx
 \end{align}
 
-As such, we can set the expectation of $C$ as such, with $g$ a candidate density:
+As such, the expectation of $C$ with $g$ a candidate density is:
 
 \begin{align}
 \mathbb{E}_{\forall i \in \{1, ..., n\},\,X_i\sim f}\big[C(g)\big]&=\mathbb{E}\big[-\frac{2}{n}\sum^n_{i=1}g(X_i) + \int g(x)^2dx\big]\\
@@ -127,18 +127,20 @@ As such, we can set the expectation of $C$ as such, with $g$ a candidate density
 &=\int (g(x)-f(x))^2 dx - \int f(x)^2dx
 \end{align}
 
-Given that $\int f(x)^2dx$ is a constant, $\mathbb{E}_{\forall i \in \{1, ..., n\},\,X_i\sim f}\big[C(g)\big]$ is minimal when $\int (g(x)f(x))^2 dx$ is minimal. As such, we find:
+Given that $\int f(x)^2dx$ is a constant, $\mathbb{E}_{\forall i \in \{1, ..., n\},\,X_i\sim f}\big[C(g)\big]$ is minimal when $\int (g(x)f(x))^2 dx$ is minimal. As such, it is demonstrable that:
 
 \begin{align}
 \int (g(x)-f(x))^2 dx&\ge0\\
 \int (g(x)-f(x))^2 dx&=0\text{ if and only if }\forall x,\,g(x)-f(x)=0\\
 \end{align}
 
-We can conclude that $\mathbb{E}[C(g)]$ is minimal when the candidate density $g$ is equal to the density $f$ given $\forall i \in \{1, ..., n\},\,X_i\sim f,\,\text{ IID}$.
+It can be concluded that $\mathbb{E}[C(g)]$ is minimal when the candidate density $g$ is equal to the density $f$ given $\forall i \in \{1, ..., n\},\,X_i\sim f,\,\text{ IID}$.
 
 ## Step C
 
-We want to build and compute using the following function: $$C(f) = -\frac{2}{n}\sum^n_{i=1}f(X_i) + \int f(x)^2dx$$We can build the integral part by reusing the previously declared function `kernel_estimator`. We pre-emptively create a contrast function that can handle a train and a validation/test set for the steps d and e. 
+Let's build the function implementing $C(f)$ such that: $$C(f) = -\frac{2}{n}\sum^n_{i=1}f(X_i) + \int f(x)^2dx$$
+
+The integral part can be computed by reusing the previously declared function `kernel_estimator`. Let's also pre-emptively create a contrast function that can handle a train and a validation/test sets for the next steps D and E. 
 
 ```{r constrast_function_declaration}
 
@@ -186,7 +188,7 @@ contrast_least_squares <- function(ISI_train, u, u_stepsize, h, ISI_test=NULL){
 
 ```
 
-Now that we have our functions, we can generate a new sample, drawn from the same exponential distribution as previously stated. We also update the support for our bandwidth parameters $h$ so that we have a finer grid. We also increase our sample size from 100 to 1000.
+Now, let's generate a new sample, drawn from the same exponential distribution as previously stated. Let's also update the support for the bandwidth parameters $h$ so as to have a finer parameter grid. The sample size is increased from 100 to 1000.
 
 ```{r isi_simulation_2}
 
@@ -199,7 +201,7 @@ ISI = rexp(n, rate=1)
 
 ```
 
-Reusing our previous parameters, we compute the contrast for the newly simulated ISI:
+Reusing the previous parameters, the contrast for the newly simulated ISI can be computed:
 
 ```{r compute_contrast, out.width="100%"}
 
@@ -214,7 +216,6 @@ contrasts = apply(h,1,function(x) {
 })
 
 # Plots the given contrasts for the set of bandwidths h
-
 plot(h, contrasts, type="l",
      xlab="Bandwidth Parameter h", ylab="Contrast",
      main="Least-Square Contrast on a Exponential distribution Exp(1)")
@@ -230,7 +231,7 @@ best_h
 
 ```
 
-With this bandwidth value, we want to compare the kernel estimator's resulting distribution against the actual sample distribution.
+With this bandwidth value, let's compare the kernel estimator's resulting distribution against the actual sample distribution.
 
 ```{r kde, out.width="100%"}
 
@@ -256,16 +257,16 @@ plot_kde_vs_sample_dist(estimator, ISI, best_h)
 
 ```
 
-We clearly see that the resulting bandwidth parameter $h$ does not help fit the actual distribution. We need to find a better way to determine which $h$ is the best. This will be looked at in the next step with cross-validation.
+It is evidenced that the resulting bandwidth parameter $h$ does not specifically help fit the actual distribution. A better way to determine which $h$ is the best is needed. This will be looked at in the next step with hold-out and cross-validation.
 
 ## Step D
 
-In order to perform hold-out validation, we first start by implementing the data processing pipeline for the hold-out estimator.
+In order to perform hold-out validation, let's start with implementing the data processing pipeline for the hold-out estimator.
 
 ```{r holdout_validation_process}
 
 dataset_split_holdout <- function(dataset) {
-  # We implement a hold-out dataset splitting function. It 
+  # Implements a hold-out dataset splitting function. It 
   # randomly split the input data into two equal-length subsets.
   n = length(dataset)
   split_point = round(n/2)
@@ -280,7 +281,7 @@ sets = dataset_split_holdout(ISI)
 
 ```
 
-Once we have our two sets, we can run the same process as before:
+With both training and validation/test sets, let's run the same process as before:
 
 ```{r compute_contrast_hold_out, out.width="100%"}
 
@@ -305,7 +306,7 @@ best_h
 
 ```
 
-Now that we have a best parameter $h$ given the hold-out validation, we can compute and plot the kernel estimator again based on it.
+With the current best parameter $h$ given the hold-out validation, let's compute and plot the kernel estimator again based on it:
 
 ```{r hold_out_kde, out.width="100%"}
 
@@ -319,15 +320,15 @@ plot_kde_vs_sample_dist(estimator, ISI, best_h, val_method="hold-out")
 
 ## Step E
 
-In order to implement our cross-validation, we implement a specifically design loop function to iterate over both the available data and the set of possible bandwidth parameters $h$.
+In order to implement our cross-validation, let's implement a specifically-designed loop function to iterate over both the available data and the set of possible bandwidth parameters $h$.
 
 ```{r v_fold_validation_process}
 
 v_fold_cross_validation <- function(ISI, h, v, u, u_stepsize) {
-  # We implement a v-fold cross-validation process over a ISI dataset
+  # Implements a v-fold cross-validation process over a ISI dataset
   # in order to find the best bandwidth parameter h out of a candidate list
   #
-  # We create v-folds out of the input ISI dataset
+  # Creates v-folds out of the input ISI dataset
   n = length(ISI)
   folds = split(ISI,ceiling(seq_along(ISI)/round(length(ISI)/v)))
   contrasts = c()
@@ -348,7 +349,7 @@ v_fold_cross_validation <- function(ISI, h, v, u, u_stepsize) {
 
 ```
 
-We decide to set our number of folds to $10$ in order to compute and visualize our V-fold Cross-Validation.
+With a number of folds to $10$, let's compute and visualize the V-fold Cross-Validation:
 
 ```{r v_fold_computation, out.width="100%"}
 
@@ -374,7 +375,7 @@ best_h
 
 ```
 
-Now that we have a best parameter $h$ given the hold-out validation, we can compute and plot the kernel estimator again based on it.
+With the current best parameter $h$ given the hold-out validation, let's compute and plot the kernel estimator again based on it:
 
 ```{r v_fold_kde, out.width="100%"}
 
@@ -386,11 +387,13 @@ plot_kde_vs_sample_dist(estimator, ISI, best_h, val_method="v-fold cross-validat
 
 ```
 
-### Note on Step D and e
+### Note on Step D and E
 
-We observe, by visual inspection of the plots, that the estimations with the hold-out and v-fold cross-validation perform better than the first method (which did not use any kind of validation). 
+It is observed that, by visual inspection of the plots, the estimations with the hold-out and v-fold cross-validation perform better than the first method (which did not use validation). 
 
-In general, we find that the hold-out method tends to generally provide an equivalent or better estimation than v-fold cross-validation given the case used above (i.e. with this specific selection of $h$ bandwidth and $u$ range. Once, it happened that the hold-out and v-fold cross-validation methods found these approximations (*not during the same simulation*), which are very close to the actual sample density:
+In the current implementation, it seems that the hold-out method tends to provide an equivalent or better estimation than v-fold cross-validation (i.e. with this specific selection of $h$ bandwidth and $u$ range, hold-out seems to offer a better $h$ in general). 
+
+However, by running the above process several times, it happens that the hold-out and v-fold cross-validation methods can find very fitting approximations (*though not always during the same simulation*), which are very close to the actual sample density:
 
 ![best_case](../assets/best_case.png)
 
@@ -400,7 +403,7 @@ In general, we find that the hold-out method tends to generally provide an equiv
 
 ## Overview 
 
-We present the implementation of a parametric bootstrap.
+Let's implement parametric bootstrap.
 
 **A** -- Let's simulate $n = 50$ exponential variables with parameter $\theta_0 = 2$. This will be considered as observations.
 
@@ -410,7 +413,7 @@ We present the implementation of a parametric bootstrap.
 
 <u>Of note:</u> To do that, one can for instance compute $D_i = |\hat{\theta}_i − \theta_0 |$ on each simulation and decide that, with a c. $95\%$ probability, the distance between $\hat{\theta}$ and $\theta_0$ is less than the $95\%$ empirical quantile of $D_i$. this cannot be done on real data since $\theta_0$ is not known.
 
-**D** -- By bootstrapping the data the parametric approach, let's compute a bootstrap confidence interval IC2. To do so, we simulate $N$ times $n$ exponential variables with parameter $\theta = \hat{\theta}$ and do as before with respect to the simulation.
+**D** -- By bootstrapping the data the parametric approach, let's compute a bootstrap confidence interval IC2. To do so, $n$ exponential variables are simulated $N$ times with parameter $\theta = \hat{\theta}$ and do as before with respect to the simulation.
 
 **E** -- Let's compare $IC_1$ and $IC_2$ for various size of $N$. Let's also explain why $IC_2$ cannot converge to $IC_1$ when $N\rightarrow+\infty$, even if it is a pretty good approximation.
 
@@ -429,7 +432,7 @@ observations = rexp(n, theta_0)
 
 ## Step B
 
-The parametric approach informs us that the MLE for IID ISI modeled by an exponential distribution is the following: $\hat{\theta}_{obs}=\frac{1}{\bar{X}}$ with $\bar{X}$ the sample mean of the observations. The proof can be found here: [StatLect](https://www.statlect.com/fundamentals-of-statistics/exponential-distribution-maximum-likelihood) (last accessed, Dec 5, 2021).
+The parametric approach informs that the MLE for IID ISI modeled by an exponential distribution is the following: $\hat{\theta}_{obs}=\frac{1}{\bar{X}}$ with $\bar{X}$ the sample mean of the observations. The proof can be found here: [StatLect](https://www.statlect.com/fundamentals-of-statistics/exponential-distribution-maximum-likelihood) (last accessed, Dec 5, 2021).
 
 ```{r parametric_bootstrap_MLE}
 
@@ -446,7 +449,7 @@ hat_theta
 
 ## Step C
 
-We want to compute the $95\%$ confidence interval $IC_1$ of $\theta$. To do that, we can derive $IC_1$ by preliminarily computing the $95\%$ quantile of $D$: $$\forall i\in\{1, ..., n_{simulations}\},\,\,D_i = |\hat{\theta}_i − \theta_0 |$$.
+Let's compute the $95\%$ confidence interval $IC_1$ of $\theta$. To do that, $IC_1$ is derived by preliminarilly computing the $95\%$ quantile of $D$: $$\forall i\in\{1, ..., n_{simulations}\},\,\,D_i = |\hat{\theta}_i − \theta_0 |$$.
 
 ```{r parametric_bootstrap_D}
 
@@ -466,7 +469,7 @@ distances = compute_distances(n_simulations, n, theta_0)
 
 ```
 
-Since we have obtained $D_i, \forall i\in\{1, ..., n_{simulations}\}$, we can plot the distribution of $D$ for visualization purposes.
+With $D_i, \forall i\in\{1, ..., n_{simulations}\}$, the distribution of $D$ can be plotted for visualization purposes:
 
 ```{r parametric_bootstrap_Ddistribution, out.width="100%"}
 
@@ -475,14 +478,13 @@ plot(density(distances), xlab="", ylab="",
 
 ```
 
-We compute the $95\%$ quantile of $D$ and can rework the $95\%$ confidence interval on $\theta$. 
+Let's compute the $95\%$ quantile of $D$ and can rework the $95\%$ confidence interval on $\theta$. 
 
 ```{r parametric_bootstrap_IC1}
 
 compute_95CI <- function(distances, theta_0, print_msg=F) {
   # Computes the 95% quantile of D
   quantile95_distances = quantile(distances, probs=c(0.95))
-  
   # Computes and prints the resulting CI1 of theta
   CI = c(theta_0-quantile95_distances, theta_0+quantile95_distances)
   CI = t(as.matrix(setNames(CI, c("2.5%", "97.5%"))))
@@ -498,7 +500,7 @@ IC = compute_95CI(distances, theta_0, T)
 
 ## Step D
 
-We reuse the content used in steps A and B for the following steps. To perform the parametric bootstrapping, we arbitrarily set $N=10000$ as with Step C.  
+Let's reuse the content used in steps A and B for the following steps. To perform the parametric bootstrapping, the number of simulation is arbitrarily set to $N=10000$, as with Step C.  
 
 ```{r parametric_bootstrap_IC2}
 
@@ -518,9 +520,8 @@ compute_distances_bootstrap <- function(N, n, observations) {
   abs(theta_0-hat_theta_sims)
 }
 
-# We substitute our previously computed hat_theta for theta_0 in the 
+# Substitutes our previously computed hat_theta for theta_0 in the 
 # previously declared function setup
-
 distances = compute_distances_bootstrap(n_simulations, n, observations)
 IC2 = compute_95CI(distances, hat_theta, T)
 
@@ -528,7 +529,7 @@ IC2 = compute_95CI(distances, hat_theta, T)
 
 ## Step E
 
-We reuse the previous process, varying $N$ from $10$ to $1e12$ by order of grandeurs.
+Let's reuse the previous process, varying $N$ from $10$ to $1e12$ by orders of magnitude.
 
 ```{r parametric_bootstrap_IC1vIC2}
 
@@ -553,7 +554,8 @@ colnames(cis) = c("CI1_0.025","CI1_0.975","CI2_0.025","CI2_0.975")
 cis
 
 ```
-We compute the difference between $CI_1$ and $CI_2$'s confidence interval lower and upper bounds. We then plot those differences.
+
+Let's compute the difference between $CI_1$ and $CI_2$'s confidence interval lower and upper bounds. Those differences are then plotted:
 
 ```{r r parametric_bootstrap_IC1vIC2_2, out.width="100%"}
 
@@ -571,9 +573,9 @@ legend("topright", legend=c("CI 0.025% threshold", "CI 0.975% threshold"),
 
 ```
 
-We evidence that we do not see an apparent convergence of the two confidence intervals. 
+It is evidenced that there is no apparent convergence of the two confidence intervals. 
 
-This is due to the theory of the bootstrap pivotal confidence interval (see picture from *All of Statistics*, by L. Wasserman, p111) that states that the boostrap confidence interval will converge towards that given interval $C_n$, but that confidence interval is not the original (but is close) as we are working with bootstrapped value where the underlying distribution is not $\exp(\theta_0)$ but the bootstrapped one, which is never exactly the same.
+This is due to the theory of the bootstrap pivotal confidence interval (See picture from *All of Statistics*, by L. Wasserman, p111) that states that the boostrap confidence interval will converge towards that given interval $C_n$, but that confidence interval is not the original (but is close). Working with bootstrapped values, the underlying distribution is not $\exp(\theta_0)$ but the bootstrapped one, which is never exactly the same.
 
 ![bootstrap](../assets/bootstrap_theory.png)
 
@@ -586,7 +588,7 @@ library(STAR)
 
 ```
 
-We import the data:
+Let's import the data:
 
 ```{r puff_data_import, out.width="100%"}
 
@@ -597,18 +599,18 @@ plot(neuron_1)
 
 ```
 
-We define the following periods:
+Given prior knowledge, the periods characterizing the behavior of the neuron are defined as such:
 
 - Before the puff: $t\in[0, 6.14]$
 - During the puff: $t\in]6.14, 6.64[$
 - After the puff: $t\in[6.64, c. 13]$
 
-We now retrieve the 15 simulations' spike data into three sets as vectors.
+Let's retrieve the 15 simulations' spike data into three sets as vectors.
 
 ```{r puff_data_extraction}
 
 spike_data_extract <- function(neuron_data, lower=NULL, upper=NULL){
-  # Function to extract spike data in a given time frame and return
+  # Extracts spike data in a given time frame and return
   # the corresponding ISI
   ISI=c()
   for (sim in 1:length(neuron_data)){
@@ -626,13 +628,14 @@ spike_data_extract <- function(neuron_data, lower=NULL, upper=NULL){
               "theta_hat"=1/(mean(ISI)-min(ISI))))
 }
 
+# Retrieves the data per period
 data_before = spike_data_extract(neuron_1, 6.14, NULL)
 data_during = spike_data_extract(neuron_1, 6.14, 6.65)
 data_after  = spike_data_extract(neuron_1, NULL, 6.65)
 
 ```
 
-We plot the extracted datasets against each other:
+Let's plot the extracted datasets against each other:
 
 ```{r ISI_distributions, out.width="100%"}
 
@@ -645,7 +648,7 @@ legend("topright", legend=c("During Puff", "Before Puff", "After Puff"),
 
 ```
 
-We clearly see that there is a discrepancy between the distributions. We now have to show it statistically. We first start by declaring our functions:
+It is visually verifiable that there is a discrepancy between the distributions. To show that statistically, let's first start by declaring the following functions:
 
 ```{r functions_CI_with_bonferroni}
 
@@ -676,7 +679,7 @@ compute_95CI_bonferroni <- function(distances, theta, k_tests, print_msg=F) {
 
 ```
 
-We now can compute the 95% confidence interval with Bonferroni correction. Here the number of tests of level $\alpha=0.05$ is $3$ since we do one confidence interval per dataset (before, during, after). For the bootstrapping, we reuse the previous number of simulations $N=10000$.
+Let's now compute the 95% confidence interval with Bonferroni correction. Here the number of tests of level $\alpha=0.05$ is $3$ since one confidence interval per dataset (before, during, after) is computed. For the bootstrapping, let's reuse the previous number of simulations $N=10000$.
 
 ```{r compute_CI_with_bonferroni}
 
@@ -693,13 +696,13 @@ ICafter = compute_95CI_bonferroni(distances, data_after$theta_hat, 3, T)
 
 ```
 
-As such, we evidence that there is a clear distinction between the three periods in terms of confidence interval of the underlying parameter $\theta$. 
+As such, it is evidenced that there is a clear distinction between the "before" and "after" periods and the "during" period as they do not overlap. Similarly, it is uncertain whether or not the "before" and "after" periods are distinct in terms of behavior as their confidence interval do overlap.
 
 # 3 - Non-Parametric Boostrap
 
 ## Overview 
 
-Reusing the previous data of the STAR package, we will perform non-parametric bootstrap (with firing rates instead of ISI). Let's compute to compute non parametric bootstrap confidence intervals on the firing rates. A firing rate is defined by the average number of spikes per second.
+Reusing the previous data of the STAR package, let's perform non-parametric bootstrap (with firing rates instead of ISI). Let's compute to compute non parametric bootstrap confidence intervals on the firing rates. A firing rate is defined by the average number of spikes per second.
 
 **A** -- Let's compute an estimation of the firing rate for each of the three periods for the experiment `citronellal` and for each of the trials.
 
@@ -709,12 +712,14 @@ Reusing the previous data of the STAR package, we will perform non-parametric bo
 
 ## Step A
 
-To compute an estimation of the firing rate, we decide to take the average firing rate per second over each of the three periods outlined in the previous section. We first declare the corresponding function
+To compute an estimation of the firing rate, let's take the average firing rate per second over each of the three periods outlined in the previous section. 
+
+Let's first declare the corresponding function:
 
 ```{r firing_rates_function}
 
 firing_rate_extract <- function(neuron_data, lower=NULL, upper=NULL){
-  # Function to extract spike data in a given time frame and return
+  # Extracts spike data in a given time frame and return
   # the corresponding ISI
   #
   # Data extraction function
@@ -744,7 +749,7 @@ firing_rate_extract <- function(neuron_data, lower=NULL, upper=NULL){
 
 ```
 
-We now extract the data and compute the corresponding firing rates.
+Let's extract the data and compute the corresponding firing rates.
 
 ```{r firing_rates_computation}
 
@@ -754,7 +759,7 @@ data_after  = firing_rate_extract(neuron_1, NULL, 6.65)
 
 ```
 
-With the firing rate computes, we can visualize them for each simulation.
+With the firing rate computed, let's visualize them for each simulation.
 
 ```{r firing_rates_visualization, out.width="100%"}
 
@@ -773,7 +778,7 @@ legend("topright", legend=c("Before Puff", "During Puff", "After Puff"),
 
 ## Step B
 
-We build a non-parametric bootstrap function for the mean confidence interval:
+Let's build a non-parametric bootstrap function for the mean confidence interval:
 
 ```{r non_param_bootstrap_function}
 
@@ -807,7 +812,7 @@ mean_CI_bootstrap <- function(data, n_simulations, alpha, print_msg=F) {
 
 ```
 
-We generate a normal distribution with 10 elements with mean $\mu=0$ and standard deviation $\sigma=1$, and compute its $95\%$ bootstrapped confidence interval for the mean with $N_{simulation}=10000$ as an example:
+Let's generate a normal distribution with 10 elements with mean $\mu=0$ and standard deviation $\sigma=1$, and compute its $95\%$ bootstrapped confidence interval for the mean with $N_{simulation}=10000$ as an example:
 
 ```{r bootstrap_meanCI_simulated_data}
 
@@ -817,11 +822,11 @@ mean_CI_bootstrap(data, n_simulations, 0.05, print_msg=T)
 
 ```
 
-We see that the real mean $\mu=0$ falls into the bootstrapped confidence interval for the mean.
+It is shown that the real mean $\mu=0$ falls into the bootstrapped confidence interval for the mean.
 
 ## Step C
 
-We compute a $95\%$ bootstrapped confidence interval for the mean of each period, with $N_{simulation}=10000$. 
+Let's compute a $95\%$ bootstrapped confidence interval for the mean of each period, with $N_{simulation}=10000$. 
 
 ```{r bootstrap_meanCI_neuron_data}
 
@@ -833,7 +838,7 @@ mean_CI_bootstrap(data_after$firing_rates, n_simulations, 0.05, print_msg=T)
 
 ```
 
-We find that the $95\%$ confidence intervals for each period tend to not overlap with each other (Note: in few cases the confidence intervals for the means before and after the puff overlap at their respective upper and lower bounds), indicating that there is a difference between the three periods in terms of firing rates.
+The resulting $95\%$ confidence intervals tend to not overlap with each other (Note: in few cases the confidence intervals for the means before and after the puff overlap at their respective upper and lower bounds). this indicates that there is a difference between the three periods in terms of firing rates.
 
 # 4 - Clustering
 
@@ -841,19 +846,19 @@ We find that the $95\%$ confidence intervals for each period tend to not overlap
 
 86 neurons of the striatum of a rat performing a spatial task have been recorded. The attached file `action_potential.Rdata` contains the average shape of their action potential as recorded by tetrodes. Typing `load(action_potential.Rdata)` will provide a variable `Record` (a list). `Record[[i]]` is a matrix with 32 lines and 86 columns (one column=one neuron), the index $i$ refers to the electrode number $i$ of the tetrode. The line $j$ in the matrix corresponds to the value of the action potential at $j ∗ 0.0001$ second after the beginning of the action potential.
 
-**A** -- Let's plot for some neurons the superposition of the 4 forms that are corresponding to the action potential as seen by each of the electrodes. We will see that the heights of the signal are very differents. This comes from the proximity of the electrodes. We will also see and that the highest signal is not always recorded by the same electrode.
+**A** -- Let's plot for some neurons the superposition of the 4 forms that are corresponding to the action potential as seen by each of the electrodes. It will be shown that the heights of the signal are very differents. This comes from the proximity of the electrodes. IT will also be shown that the highest signal is not always recorded by the same electrode.
 
-**B** -- Let's focus on the best shape, i.e., the shape with the highest peak on all electrodes. On this curve, we extract two parameters that represents the action potential: the duration of the peak above half its height, the delay between the time of the valley after the peak and the time of the peak. Let's extract these two values for each of the neuron.
+**B** -- Let's focus on the best shape, i.e., the shape with the highest peak on all electrodes. On this curve, let's extract two parameters for each neurons, representing the action potential: the duration of the peak above half its height, the delay between the time of the valley after the peak and the time of the peak.
 
-**C** -- Before doing hierarchical clustering, let's center and renormalize both quantities (as when doing PCA) and put the result into a matrix $x$ with 2 columns and 86 rows. Then, let's use `plot(hclust(dist(x),method="ward.D2"))` to see the dendogram. Find the largest distance between clusters and cut the tree there. Conclude that clearly we have two clusters.
+**C** -- Before doing hierarchical clustering, let's center and renormalize both quantities (as when doing PCA) and put the result into a matrix $x$ with 2 columns and 86 rows. Then, let's use `plot(hclust(dist(x),method="ward.D2"))` to see the dendogram. Let's find the largest distance between clusters and cut the tree there. Then let's that there clearly are two clusters.
 
 <u>Of note:</u> *The dendrogram is a visual representation of the data. The two closest points are merged together and represented by their middle (or barycenter) then the algorithm continue and can eventually merge points and barycenters, or two barycenters together until everything is merged. This process of merging is plot as a tree: when two quantities with different heights are merged there are new branches growing and the shortest one correspond to the distance between the centers.*
 
-**D** -- The commands `z=kmeans(x,2)` and `z$cluster` give the cluster label for the different neurons. Plot the neurons in the plane of the two variables with a different color code for the first cluster and second cluster as estimated by k-means. You have identified the "fast spiking interneurons" (the ones with small durations for each delays) and the "medium spiny neurons").
+**D** -- The commands `z=kmeans(x,2)` and `z$cluster` give the cluster label for the different neurons. Let's plot the neurons in the plane of the two variables with a different color code for the first cluster and second cluster as estimated by k-means. this way, "fast spiking interneurons" (the ones with small durations for each delays) and the "medium spiny neurons" have been identified.
 
 ## Step A
 
-We start by importing the data:
+Let's start by importing the data:
 
 ```{r action_potential_import}
 
@@ -867,7 +872,7 @@ cat(paste("Number of recorded action potential timesteps available per neuron:",
 
 ```
 
-Once the data is imported, we declare a plotting function to plot selections of neurons from the available data (acquired via each electrode).
+Once the data is imported, let's declare a plotting function to plot selections of neurons from the available data (acquired via each electrode).
 
 ```{r electrode_neuron_plot_function}
 
@@ -893,7 +898,7 @@ plot_neuron_data <- function(neuron_number, action_potentials, print_plot=T) {
 
 ```
 
-We select four random neurons and plots their action potentials with the previously declared functions.
+Let's select four random neurons and plot their action potentials with the previously declared functions.
 
 ```{r plot_neuron_action_potentials, out.width="100%"}
 
@@ -904,7 +909,7 @@ for (i in neuron_numbers) {
 
 ```
 
-To see which electrode recorded the highest signal for each neuron, we extract the whole data into a dataframe.
+To see which electrode recorded the highest signal for each neuron, let's extract the whole data into a single dataframe.
 
 ```{r find_highest_signal}
 
@@ -927,7 +932,7 @@ colnames(best_electrodes) = c("electrode_with_best_record")
 
 ```
 
-We now visualize our result:
+We now visualize the results:
 
 ```{r visualize_highest_signals}
 
@@ -935,11 +940,11 @@ table(best_electrodes)
 
 ```
 
-We see that in general, the electrodes 2 and 3 recorded the most times the highest signal, while the electrode 4 recorded the highest signal the lowest amount of times among the 86 neurons.
+In the end, it is found that the electrodes 2 and 3 recorded the highest signal the most, while the electrode 4 recorded the highest signal the least amount of time among the 86 neurons.
 
 ## Step B
 
-We create a function to output the vector $(\text{peak_to_valley_length}, \text{peak_duration})$ from the best available action potential shape per neuron.
+Let's create a function to output the vector $(\text{peak_to_valley_length}, \text{peak_duration})$ from the best available action potential shape per neuron.
 
 ```{r parametrizing_action_potentials}
 
@@ -978,7 +983,7 @@ parameters = apply(matrix(1:length(full_data)), 1,
 
 ```
 
-We display the first five results:
+Let's display the first five results:
 
 ```{r print_parameters}
 
@@ -996,7 +1001,7 @@ for (neuron in 1:5){
 
 ## Step C
 
-We start by reformatting our data into a $86\times2$ matrix and standardizing its content:
+Let's start by reformatting our data into a $86\times2$ matrix and standardizing its content:
 
 ```{r parameter_matrix_reformatting}
 
@@ -1008,7 +1013,7 @@ normalized_parameters = apply(parameters, 2, standardize)
 
 ```
 
-We now compute the dendrogram of the centered and normalized set of data:
+Let's now compute the dendrogram of the centered and normalized set of data:
 
 ```{r hierarchical_clustering, out.width="100%"}
 
@@ -1017,10 +1022,10 @@ plot(clustering)
 axis(1, cex.axis = 0.7)
 
 ```
-We want to find the largest distance between clusters and cut the tree there. Iterating over the sequence $\{0.25, 0.5,...,2.75\}$ and then trying with an infinite height, we visualize the resulting dendrogram clustering.
-We find that the larest distance between clusters is achieved once height reaches a value between $1.25$ and $1.5$.
+To find the largest distance between clusters and cut the tree there, let's iterate over the sequence of heights $\{0.25, 0.5,...,2.75\}$ and then try with an infinite height as a clsutering parameter. Then, let's visualize the resulting dendrogram clustering.
+It is found that the larest distance between clusters is achieved once height reaches a value between $1.25$ and $1.5$.
 
-```{r cluster_visualization, out.width="60%"}
+```{r cluster_visualization, out.width="50%"}
 
 for (i in c(seq(0.25,2.75, 0.25),Inf)){
   plot(clustering, xlab="",main=paste("Cluster dendrogram with height=",i),sub="")
@@ -1030,7 +1035,7 @@ for (i in c(seq(0.25,2.75, 0.25),Inf)){
 
 ```
 
-As such, we can confidently say that we have two distinct clusters of action potentials such that:
+As such, it can confidently be said that two distinct clusters of action potentials are found such that:
 
 ```{r cluster_visualization_final, out.width="100%"}
 
@@ -1043,7 +1048,7 @@ axis(1, cex.axis = 0.7)
 
 ## Step D
 
-We plot the neurons in the plane of the two previously declared variables with a different color code for each cluster as estimated by a k-means method. We have identified "fast spiking interneurons" (i.e. neurons with small durations for each delays) and the "medium spiny neurons".
+Let's plot the neurons in the plane of the two previously declared variables with a different color code for each cluster (as estimated by a k-means method). This way, "fast spiking interneurons" (i.e. neurons with small durations for each delays) and the "medium spiny neurons" can easily be identified:
 
 ```{r kmeans, out.width="100%"}
 
