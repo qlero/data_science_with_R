@@ -1,0 +1,58 @@
+---
+title: "poisson_processes"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# 1 - Homogeneous Poisson processes
+
+## Overview
+
+**Let's generate several homogeneous Poisson processes and provide raster and trajectory plots for comparison. Let's further discuss afterwards.**
+    
+## Implementation
+    
+### Goal
+
+### Method
+
+### Results
+
+### Comments
+
+# 1 - Inhomogeneous Poisson processes
+
+## Overview
+
+**Let's choose a non-constant rate function $r(t)$ and:**
+
+1. **Implement a so-called poor and robust algorithm to simulate an inhomogeneous poisson process with rate $r(t)$**
+
+2. **Implement an algorithm with a rejection procedure to simulate an inhomogeneous poisson process with rate $r(t)$**
+
+<u>Note:</u> Let's compare the two implementations in terms of time complexity/efficiency afterwards
+    
+## Implementation
+    
+### Step 1, "poor and robust" algorithm implementation
+
+**Goal** --
+
+**Method** -- 
+
+**Results** --
+
+**Comments** --
+
+### Step 2, algorithm with rejection procedure implementation
+
+**Goal** --
+
+**Method** -- 
+
+**Results** --
+
+**Comments** --

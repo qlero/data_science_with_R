@@ -40,6 +40,10 @@ R Markdown file offering an overview of kernel estimator cross-validation, and n
 
 <img src="assets/spikes.png" width="600">
 
+## Project 8 - Simulation of Poisson Processes (Interspike Interval modeling)
+
+R Markdown file offering an overview of homogeneous and non-homogeneous Poisson Processes and their simulation using different algorithms. 
+
 #### License
 
 MIT, see `LICENSE.txt`
