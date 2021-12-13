@@ -17,9 +17,95 @@ knitr::opts_chunk$set(echo = TRUE)
     
 ### Goal
 
+Our goal is to introduce several simulation of homogeneous Poisson processes (a special case of continuous time Markov chains) and plot them using raster and trajectory plots and comment on possible observations.
+
 ### Method
 
+We recall the definition of a homogeneous Poisson process with parameter $r$. 
+
+- We yield a homogeneous Poisson process if the independent and identically distributed random variables $\forall k \in\mathbb{N},\,\tilde{T}^k~\mathcal{E}(r)$, the exponential distribution with parameter $r$.
+
+\begin{align}
+\forall k \in\mathbb{N},\,\tilde{T}^k&~\mathcal{E}(r)\\
+\forall j \in\mathbb{N}_+,\,T^j &= \overset{j}{\underset{k=1}{\sum}}\tilde{T}^k\\
+T^0&=\tilde{T}^0\\
+N_t&=k\quad\quad\text{(a counter s.t. $t\in[T^k,T^{k+1}]$)}
+\end{align}
+
 ### Results
+
+We start by declaring our functions:
+
+1. function to generate homogeneous Poisson processes:
+
+```{r simulation_function}
+
+homogeneous_poisson_process_simulation <- function(
+  parameter, process_length, simulation_number
+){
+  ### Generates <simulation_number> homogeneous Poisson process simulations 
+  ### with parameter <parameter> as input, with a maximum process length of
+  ### <process_length>.
+  #
+  # Samples <process_length> exponential distribution with parameter 
+  # <parameter> a <simulation_number> number of times.
+  # Yiels a <simulation_number>*<process_length> matrix of IID exponential
+  # random variables. It corresponds to the list of \tilde{T}^k used to 
+  # build a homogeneous Poisson process
+  simulations = matrix(rexp(process_length*simulation_number, parameter), 
+                       nrow = simulation_number, ncol = process_length)
+  # Adds the 0-column
+  simulations = cbind(matrix(0,nrow = simulation_number, ncol=1), simulations)
+  # Performs a row-wise cumulative sum to yield the list of T^j corresponding 
+  # to a homogeneous Poisson process
+  simulations = t(apply(simulations, 1, cumsum))
+  # Computes the counter
+  counter = c(0:process_length)
+  # Returns
+  return(list("counter"=counter, "simulations"=simulations))
+}
+
+```
+
+2. function to generate the trajectory plot:
+
+```{r trajectory_plot, out.width="100%"}
+
+plot_trajectories <- function(poisson_processes, parameter) {
+  ### Generates a trajectory plot for the first four instances of a list of
+  ### Poisson processes.
+  #
+  # Generates the counter values
+  counter = c(0:(dim(poisson_processes)[2]-1))
+  # Plots
+  plot(poisson_processes[1,],counter,type="S",col=2,lwd=1,
+       xlab="Time", ylab="N (counter)",
+       xlim=c(0, round(max(c(poisson_processes[1:10,])))+1/parameter),
+       main=paste("10 homogeneous Poisson processes ~ Exp(",
+                  parameter,")",sep=""))
+  for (i in 2:10) {
+    lines(poisson_processes[i,],counter,type="S",lwd=1,col=i+1)
+  }
+}
+
+```
+
+We generate simulations with varying parameters and display the results:
+
+```{r simulate_and_plot}
+
+n_simulations = 1000
+simulation_length = 10 # corresponds to a maximum counter/number of jumps
+parameters = c(0.1, 1, 2, 10)
+
+for (parameter in parameters){
+  simulations = homogeneous_poisson_process_simulation(
+    parameter,simulation_length,n_simulations
+  )
+  plot_trajectories(simulations$simulations, parameter)
+}
+
+```
 
 ### Comments
 
