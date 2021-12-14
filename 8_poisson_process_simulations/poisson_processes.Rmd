@@ -17,7 +17,14 @@ knitr::opts_chunk$set(echo = TRUE)
     
 ### Goal
 
-Our goal is to introduce several simulation of homogeneous Poisson processes (a special case of continuous time Markov chains) and plot them using raster and trajectory plots and comment on possible observations.
+Our goal is to introduce several simulation of homogeneous Poisson processes (a special case of continuous time Markov chains) and plot them using raster and trajectory plots and comment on possible observations. To create trajectory plots, we will rely on base R while raster plots will be generated with the `STAR` library.
+
+```{r library_imports, results=FALSE,  message=FALSE}
+
+#install.packages("STAR")
+library(STAR)
+
+```
 
 ### Method
 
@@ -69,7 +76,7 @@ homogeneous_poisson_process_simulation <- function(
 
 2. function to generate the trajectory plot:
 
-```{r trajectory_plot, out.width="100%"}
+```{r trajectory_plot}
 
 plot_trajectories <- function(poisson_processes, parameter) {
   ### Generates a trajectory plot for the first four instances of a list of
@@ -81,7 +88,7 @@ plot_trajectories <- function(poisson_processes, parameter) {
   plot(poisson_processes[1,],counter,type="S",col=2,lwd=1,
        xlab="Time", ylab="N (counter)",
        xlim=c(0, round(max(c(poisson_processes[1:10,])))+1/parameter),
-       main=paste("10 homogeneous Poisson processes ~ Exp(",
+       main=paste("10 homogeneous Poisson\nprocesses ~ Exp(",
                   parameter,")",sep=""))
   for (i in 2:10) {
     lines(poisson_processes[i,],counter,type="S",lwd=1,col=i+1)
@@ -90,24 +97,94 @@ plot_trajectories <- function(poisson_processes, parameter) {
 
 ```
 
-We generate simulations with varying parameters and display the results:
+3. function to generate the raster plot:
 
-```{r simulate_and_plot}
+<u>Of note:</u> By default, we restrict the visualization of raster plots to a given x-axis window limited to the interval $[0, T^j_{min}]$, with $T^j_{min}$ the minimum amount of time any simulated homogeneous Poisson process reached a pre-selected last step/jump (i.e. the maximum jump, starting at 0 and incrementing by jumps of 1, after which we stop a homogeneous Poisson process simulation). This maximum variable corresponds to the variable `process_length` used as input for our simulation function `homogeneous_poisson_process_simulation`.
+
+The rationale is that, as Poisson processes go towards this maximum amount of steps `process_length`, the spike train ticks displayed in a raster plot would start thinning out, which might lead a user to erroneous conclusions if they perform visual analysis. 
+
+An example without this interval bound will be given in comments.
+
+```{r raster_plot}
+
+plot_rasters <- function(poisson_processes, parameter,restrict_xlim=F) {
+  ### Generates a raster plot for the first 100 instances of a list of 
+  ### Poisson processes.
+  #
+  # Transforms the matrix of poisson process into a list
+  col_length = dim(poisson_processes)[2]
+  sims = t(poisson_processes[,2:col_length])
+  trains = split(sims, rep(1:ncol(sims), each = nrow(sims)))
+  trains = as.repeatedTrain(trains[1:100])
+  # Plots the raster plot
+  title = paste0("Raster plot of the first 100 homoge-\nneous",
+             " Poisson procs. ~ Exp(", parameter,")")
+  if (restrict_xlim){
+    plot(trains, colStim = "grey80", main=title, 
+         ylab="Trials", yaxt="n",
+         xlim=c(0,min(round(poisson_processes[,col_length])+1)))
+  } else {
+    plot(trains, colStim = "grey80", main=title, 
+         ylab="Trials", yaxt="n")
+  }
+}
+
+```
+
+We generate simulations with varying parameters and display the results with trajectory plots:
+
+```{r simulate_and_plot_trajectories, out.width="100%"}
 
 n_simulations = 1000
 simulation_length = 10 # corresponds to a maximum counter/number of jumps
-parameters = c(0.1, 1, 2, 10)
+parameters = matrix(c(0.1, 1, 2, 10))
 
-for (parameter in parameters){
-  simulations = homogeneous_poisson_process_simulation(
-    parameter,simulation_length,n_simulations
+simulations = apply(parameters, 1, function(x) {
+  homogeneous_poisson_process_simulation(
+    x,simulation_length,n_simulations
   )
-  plot_trajectories(simulations$simulations, parameter)
+})
+
+par(mfrow=c(2,2))
+for (i in 1:length(parameters)){
+  plot_trajectories(simulations[[i]]$simulations, parameters[i])
+}
+
+```
+
+We then display the results with raster plots each time with the whole simulations or only the first one hundred trains:
+
+```{r simulate_and_plot_rasters, out.width="100%"}
+
+par(mfrow=c(2,2))
+for (i in 1:length(parameters)){
+  plot_rasters(simulations[[i]]$simulations, parameters[i], restrict_xlim = T)
 }
 
 ```
 
 ### Comments
+
+As previously mentioned in note, we have based our homogeneous Poisson process modeling on the exponential distribution. Moreover, for simulation purposes, a maximum amount of state jumps (from 0 to 1, then 1 to 2, etc.) was also stated, which led us to restrict our plot visualization to a given x-axis window (starting at x=0 and stopping at $T^j_{min}$, the lowest amount of time a simulation batch needed to reach the last state jump).
+
+As mentioned, we did that to erase from visualization the trailing end of the graph where the spike trains stop/thin out as they are reaching their maximum iteration one after the other.
+
+Without this window restriction, we would see the following behavior at the right end of the graph -- which results from our simulation choices rather than from expected spike train behaviors, thus why we remove those tails values.
+
+```{r simulate_and_plot_2}
+
+n_simulations = 100
+simulation_length = 200 # corresponds to a maximum counter/number of jumps
+
+simulation = homogeneous_poisson_process_simulation(
+  10,simulation_length,n_simulations
+)
+
+plot_rasters(simulation$simulations, 10, restrict_xlim = F)
+
+```
+
+Beyond this, we can assess visually that we are indeed generating homogeneous processes as no given behavior arises from the generated batches of Poisson process simulation, despite varying the parameter $r$ of the underlying exponential distribution.
 
 # 1 - Inhomogeneous Poisson processes
 
@@ -123,11 +200,62 @@ for (parameter in parameters){
     
 ## Implementation
     
+As a non-constant rate function $r(t)$, we decide on a sinusoidal function $r$ (with a scale factor of $10$ w.r.t. the time parameter) such that:
+
+$$r(t)=\cos(t+\pi)+1$$
+
+The rationale is to start with a rate function with $r(0) = 0$ to conserve the $T^j=0$ condition of Poisson processes at $j=0$ as part of our simulation process.
+
+We declare our non-constant rate function and plot it as an example display:
+
+```{r non_constant_r_function}
+
+rate <- function(t) {
+  cos(t+pi)+1
+}
+
+plot(apply(matrix(c(1:10)),1,rate), type="l",
+     ylab="", xlab="time", main="Rate function r(t)")
+
+```
+
 ### Step 1, "poor and robust" algorithm implementation
 
-**Goal** --
+**Goal** -- The "poor and robust" algorithm is a method to generate inhomogeneous Poisson processes that trades robustness for time complexity. We will implement such an algorithm below and provide some resulting examples.
 
-**Method** -- 
+**Method** -- To implement a "poor and robust" approach, we want to simulate Bernoulli random variables such that, starting at $t=0$ and $N_0=0$, with time discretization parameter $\delta$:
+
+\begin{align}
+\forall j\in\mathbb{N},\,Z_j&\sim\mathcal{B}(r(j\delta)\delta)\\
+\mathbb{P}(Z_j=1) &= r(j\delta)\delta\\
+\mathbb{P}(Z_j=0) &= 1-r(j\delta)\delta\\
+\hat{N}_t^\delta &= \sum_{j=0}^{\lfloor\frac{t}{\delta}\rfloor}
+\end{align}
+
+```{r inhomogeneous_poor_robust_simulation}
+
+inhomogeneous_simulation_poor_robust <- function(
+  rate_function, delta_parameter, max_time_step=10
+) {
+  ### Generates a list of Bernouilli random variables
+  ### so as to generate a inhomogeneous Poisson process
+  ### simulation
+  #
+  # Declares the mapper function to compute the jump location
+  # over a fixed list of time steps
+  mapper <- function(t) {
+    rbinom(1,1,rate_function(t*delta_parameter)*delta_parameter)
+  }
+  # Declares the time steps object
+  time_steps = matrix(c(0:max_time_step))
+  # Computes the state jump locations
+  jumps = apply(time_steps, 1, mapper)
+  # Computes the inhomogeneous Poisson process
+  N = cumsum(jumps)
+  return(list("NtDelta"=N, "jumps"=jumps))
+}
+
+```
 
 **Results** --
 
