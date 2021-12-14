@@ -234,8 +234,8 @@ plot(apply(matrix(c(1:10)),1,rate), type="l",
 
 ```{r inhomogeneous_poor_robust_simulation}
 
-inhomogeneous_simulation_poor_robust <- function(
-  rate_function, delta_parameter, max_time_step=10
+inhomogeneous_poor_robust_algorithm <- function(
+  rate_function, delta_parameter, max_seconds
 ) {
   ### Generates a list of Bernouilli random variables
   ### so as to generate a inhomogeneous Poisson process
@@ -247,12 +247,125 @@ inhomogeneous_simulation_poor_robust <- function(
     rbinom(1,1,rate_function(t*delta_parameter)*delta_parameter)
   }
   # Declares the time steps object
-  time_steps = matrix(c(0:max_time_step))
+  time_steps = matrix(c(0:(max_seconds/delta_parameter)))
   # Computes the state jump locations
   jumps = apply(time_steps, 1, mapper)
   # Computes the inhomogeneous Poisson process
   N = cumsum(jumps)
   return(list("NtDelta"=N, "jumps"=jumps))
+}
+
+inhomogeneous_poor_robust_simulate <- function(
+  rate_function, delta_parameter, n_simulations, max_seconds=10
+){
+  ### Generates <n_simulations> of an inhomogeneous Poisson process
+  ### given the Poor and Robust algorithm
+  # 
+  # Generates a matrix/list from 1 to <n_simulations> to map over
+  n_simulations = matrix(c(1:n_simulations))
+  # Generates the simulations
+  simulations = apply(n_simulations, 1, function(x){
+    inhomogeneous_poor_robust_algorithm(
+      rate_function, delta_parameter, max_seconds
+    )
+  })
+}
+
+plot_inhomogeneous_simulations <- function(
+  poisson_processes, delta_parameter, max_seconds, rate_function
+) {
+  ### Generates a raster plot for the first 100 instances of a list of 
+  ### Poisson processes.
+  #
+  # Transforms the matrix of poisson process into a list
+  col_length = dim(poisson_processes)[2]
+  sims = t(poisson_processes[,2:col_length])
+  trains = split(sims, rep(1:ncol(sims), each = nrow(sims)))
+  trains = as.repeatedTrain(trains[1:100])
+  # Plots the raster plot
+  title = paste0("Raster plot of the first 100 homoge-\nneous",
+             " Poisson procs. ~ Exp(", parameter,")")
+  if (restrict_xlim){
+    plot(trains, colStim = "grey80", main=title, 
+         ylab="Trials", yaxt="n",
+         xlim=c(0,min(round(poisson_processes[,col_length])+1)))
+  } else {
+    plot(trains, colStim = "grey80", main=title, 
+         ylab="Trials", yaxt="n")
+  }
+}
+
+```
+
+Given the simulation function, we produce a plotting function to display the a simulation batch results.
+
+```{r inhomogeneous_poor_robust_plotting}
+
+plot_inhomogeneous_simulations <- function(
+  poisson_processes, delta_parameter, max_seconds, rate_function
+) {
+  ### Generates a 3-plot visualization for a batch of simulations of an inhomogeneous
+  ### Poisson process simulation batch.
+  #
+  # Retrieves the data to plot
+  NtDelta = c()
+  jumps = c()
+  for (i in 1:length(poisson_processes)) {
+    print(poisson_processes[[i]]$NtDelt)
+    NtDelta = cbind(NtDelta, poisson_processes[[i]]$NtDelta)
+    jumps = cbind(jumps, poisson_processes[[i]]$jumps)
+  }
+  # Computes the rate function data to plot
+  x = seq(0, max_seconds, delta_parameter)
+  y = rate(x)
+  # Plots
+  par(mfrow=c(2,2))
+  # Plots the rate function
+  plot(x, y, main="Rate function r", type="l")
+  # Plots the trajectory plot
+  
+  return(NtDelta)
+  
+}
+
+plot_rasters <- function(poisson_processes, parameter,restrict_xlim=F) {
+  ### Generates a raster plot for the first 100 instances of a list of 
+  ### Poisson processes.
+  #
+  # Transforms the matrix of poisson process into a list
+  col_length = dim(poisson_processes)[2]
+  sims = t(poisson_processes[,2:col_length])
+  trains = split(sims, rep(1:ncol(sims), each = nrow(sims)))
+  trains = as.repeatedTrain(trains[1:100])
+  # Plots the raster plot
+  title = paste0("Raster plot of the first 100 homoge-\nneous",
+             " Poisson procs. ~ Exp(", parameter,")")
+  if (restrict_xlim){
+    plot(trains, colStim = "grey80", main=title, 
+         ylab="Trials", yaxt="n",
+         xlim=c(0,min(round(poisson_processes[,col_length])+1)))
+  } else {
+    plot(trains, colStim = "grey80", main=title, 
+         ylab="Trials", yaxt="n")
+  }
+}
+
+
+plot_trajectories <- function(poisson_processes, parameter) {
+  ### Generates a trajectory plot for the first four instances of a list of
+  ### Poisson processes.
+  #
+  # Generates the counter values
+  counter = c(0:(dim(poisson_processes)[2]-1))
+  # Plots
+  plot(poisson_processes[1,],counter,type="S",col=2,lwd=1,
+       xlab="Time", ylab="N (counter)",
+       xlim=c(0, round(max(c(poisson_processes[1:10,])))+1/parameter),
+       main=paste("10 homogeneous Poisson\nprocesses ~ Exp(",
+                  parameter,")",sep=""))
+  for (i in 2:10) {
+    lines(poisson_processes[i,],counter,type="S",lwd=1,col=i+1)
+  }
 }
 
 ```
