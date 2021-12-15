@@ -4,7 +4,7 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(warning = FALSE, message = FALSE, echo = TRUE)
 ```
 
 # 1 - Homogeneous Poisson processes
@@ -88,7 +88,7 @@ plot_trajectories <- function(poisson_processes, parameter) {
   plot(poisson_processes[1,],counter,type="S",col=2,lwd=1,
        xlab="Time", ylab="N (counter)",
        xlim=c(0, round(max(c(poisson_processes[1:10,])))+1/parameter),
-       main=paste("10 homogeneous Poisson\nprocesses ~ Exp(",
+       main=paste("Trajectories of the first 10 homogeneous\nPoisson procs. ~ Exp(",
                   parameter,")",sep=""))
   for (i in 2:10) {
     lines(poisson_processes[i,],counter,type="S",lwd=1,col=i+1)
@@ -165,7 +165,7 @@ for (i in 1:length(parameters)){
 
 ### Comments
 
-As previously mentioned in note, we have based our homogeneous Poisson process modeling on the exponential distribution. Moreover, for simulation purposes, a maximum amount of state jumps (from 0 to 1, then 1 to 2, etc.) was also stated, which led us to restrict our plot visualization to a given x-axis window (starting at x=0 and stopping at $T^j_{min}$, the lowest amount of time a simulation batch needed to reach the last state jump).
+As previously mentioned in note, we have based our homogeneous Poisson process modeling on the exponential distribution. Moreover, for simulation purposes, a maximum amount of state jumps (from 0 to 1, then 1 to 2, etc.) was also stated, which led us to restrict our plot visualization to a given x-axis window (starting at $x=0$ and stopping at $T^j_{min}$, the lowest amount of time a simulation batch needed to reach the last state jump).
 
 As mentioned, we did that to erase from visualization the trailing end of the graph where the spike trains stop/thin out as they are reaching their maximum iteration one after the other.
 
@@ -206,16 +206,29 @@ $$r(t)=\cos(t+\pi)+1$$
 
 The rationale is to start with a rate function with $r(0) = 0$ to conserve the $T^j=0$ condition of Poisson processes at $j=0$ as part of our simulation process.
 
-We declare our non-constant rate function and plot it as an example display:
+We declare two non-constant rate functions as examples and plot them:
 
-```{r non_constant_r_function}
+```{r non_constant_r_function, out.width="100%"}
 
-rate <- function(t) {
-  cos(t+pi)+1
+rate_function_1 <- function(t, normalization_factor) {
+  (cos(t+pi)+1)/normalization_factor
 }
 
-plot(apply(matrix(c(1:10)),1,rate), type="l",
-     ylab="", xlab="time", main="Rate function r(t)")
+rate_function_2 <- function(t, normalization_factor) {
+  # This function will produce some NAs when used as input to the mapper in
+  # the function inhomogeneous_poor_robust_algorithm below, those will be
+  # replaced with 0s.
+  if ((t>5 && t<20) || (t>45 && t<50)) {scale = 100} else {scale = 1}
+  ret = (abs(tan(t))+1)
+  if (ret<2) {0} else ((log(ret)/scale)/normalization_factor)
+}
+
+plot(apply(matrix(c(1:60)),1,function(t) {rate_function_1(t, 2)}), type="l",
+     ylab="", xlab="Time (s)", main="Rate function r(t) #1")
+
+rt2_norm = max(apply(matrix(c(1:60)),1,function(t) {rate_function_2(t, 1)}))
+plot(apply(matrix(c(1:60)),1,function(t) {rate_function_2(t,rt2_norm)}), type="l",
+     ylab="", xlab="Time (s)", main="Rate function r(t) #2")
 
 ```
 
@@ -235,7 +248,8 @@ plot(apply(matrix(c(1:10)),1,rate), type="l",
 ```{r inhomogeneous_poor_robust_simulation}
 
 inhomogeneous_poor_robust_algorithm <- function(
-  rate_function, delta_parameter, max_seconds
+  rate_function, normalization_factor, 
+  delta_parameter, max_seconds=10
 ) {
   ### Generates a list of Bernouilli random variables
   ### so as to generate a inhomogeneous Poisson process
@@ -244,19 +258,23 @@ inhomogeneous_poor_robust_algorithm <- function(
   # Declares the mapper function to compute the jump location
   # over a fixed list of time steps
   mapper <- function(t) {
-    rbinom(1,1,rate_function(t*delta_parameter)*delta_parameter)
+    rbinom(1,1,rate_function(
+      t*delta_parameter, normalization_factor
+    )*delta_parameter)
   }
   # Declares the time steps object
   time_steps = matrix(c(0:(max_seconds/delta_parameter)))
   # Computes the state jump locations
   jumps = apply(time_steps, 1, mapper)
+  jumps[is.na(jumps)]=0
   # Computes the inhomogeneous Poisson process
   N = cumsum(jumps)
   return(list("NtDelta"=N, "jumps"=jumps))
 }
 
 inhomogeneous_poor_robust_simulate <- function(
-  rate_function, delta_parameter, n_simulations, max_seconds=10
+  rate_function, normalization_factor, 
+  delta_parameter, n_simulations, max_seconds=10
 ){
   ### Generates <n_simulations> of an inhomogeneous Poisson process
   ### given the Poor and Robust algorithm
@@ -266,33 +284,10 @@ inhomogeneous_poor_robust_simulate <- function(
   # Generates the simulations
   simulations = apply(n_simulations, 1, function(x){
     inhomogeneous_poor_robust_algorithm(
-      rate_function, delta_parameter, max_seconds
+      rate_function, normalization_factor, delta_parameter, max_seconds
     )
   })
-}
-
-plot_inhomogeneous_simulations <- function(
-  poisson_processes, delta_parameter, max_seconds, rate_function
-) {
-  ### Generates a raster plot for the first 100 instances of a list of 
-  ### Poisson processes.
-  #
-  # Transforms the matrix of poisson process into a list
-  col_length = dim(poisson_processes)[2]
-  sims = t(poisson_processes[,2:col_length])
-  trains = split(sims, rep(1:ncol(sims), each = nrow(sims)))
-  trains = as.repeatedTrain(trains[1:100])
-  # Plots the raster plot
-  title = paste0("Raster plot of the first 100 homoge-\nneous",
-             " Poisson procs. ~ Exp(", parameter,")")
-  if (restrict_xlim){
-    plot(trains, colStim = "grey80", main=title, 
-         ylab="Trials", yaxt="n",
-         xlim=c(0,min(round(poisson_processes[,col_length])+1)))
-  } else {
-    plot(trains, colStim = "grey80", main=title, 
-         ylab="Trials", yaxt="n")
-  }
+  simulations
 }
 
 ```
@@ -301,8 +296,9 @@ Given the simulation function, we produce a plotting function to display the a s
 
 ```{r inhomogeneous_poor_robust_plotting}
 
-plot_inhomogeneous_simulations <- function(
-  poisson_processes, delta_parameter, max_seconds, rate_function
+plot_inhomogeneous_poor_robust_simulations <- function(
+  poisson_processes, delta_parameter, max_seconds, 
+  rate_function, normalization_factor
 ) {
   ### Generates a 3-plot visualization for a batch of simulations of an inhomogeneous
   ### Poisson process simulation batch.
@@ -311,68 +307,98 @@ plot_inhomogeneous_simulations <- function(
   NtDelta = c()
   jumps = c()
   for (i in 1:length(poisson_processes)) {
-    print(poisson_processes[[i]]$NtDelt)
     NtDelta = cbind(NtDelta, poisson_processes[[i]]$NtDelta)
     jumps = cbind(jumps, poisson_processes[[i]]$jumps)
   }
+  NtDelta = NtDelta # Scales to account for delta_parameter
   # Computes the rate function data to plot
-  x = seq(0, max_seconds, delta_parameter)
-  y = rate(x)
+  x = matrix(seq(0, max_seconds, delta_parameter))
+  y = apply(x, 1, function(t) {rate_function(t, normalization_factor)})
+  
   # Plots
-  par(mfrow=c(2,2))
+  par(mfrow=c(3,1), mai = c(0.35, 0.55, 0.35, 0.1))
   # Plots the rate function
-  plot(x, y, main="Rate function r", type="l")
-  # Plots the trajectory plot
-  
-  return(NtDelta)
-  
-}
-
-plot_rasters <- function(poisson_processes, parameter,restrict_xlim=F) {
-  ### Generates a raster plot for the first 100 instances of a list of 
-  ### Poisson processes.
-  #
-  # Transforms the matrix of poisson process into a list
-  col_length = dim(poisson_processes)[2]
-  sims = t(poisson_processes[,2:col_length])
-  trains = split(sims, rep(1:ncol(sims), each = nrow(sims)))
-  trains = as.repeatedTrain(trains[1:100])
-  # Plots the raster plot
-  title = paste0("Raster plot of the first 100 homoge-\nneous",
-             " Poisson procs. ~ Exp(", parameter,")")
-  if (restrict_xlim){
-    plot(trains, colStim = "grey80", main=title, 
-         ylab="Trials", yaxt="n",
-         xlim=c(0,min(round(poisson_processes[,col_length])+1)))
-  } else {
-    plot(trains, colStim = "grey80", main=title, 
-         ylab="Trials", yaxt="n")
-  }
-}
-
-
-plot_trajectories <- function(poisson_processes, parameter) {
-  ### Generates a trajectory plot for the first four instances of a list of
-  ### Poisson processes.
-  #
-  # Generates the counter values
-  counter = c(0:(dim(poisson_processes)[2]-1))
-  # Plots
-  plot(poisson_processes[1,],counter,type="S",col=2,lwd=1,
-       xlab="Time", ylab="N (counter)",
-       xlim=c(0, round(max(c(poisson_processes[1:10,])))+1/parameter),
-       main=paste("10 homogeneous Poisson\nprocesses ~ Exp(",
-                  parameter,")",sep=""))
+  plot(x, y, main="Rate function r", type="l", xlab="",ylab="y")
+  # Plots the trajectory plot for the first ten generated processes
+  n_simulations = dim(NtDelta)[2]
+  counters = c(0:(dim(NtDelta)[1]-1))*delta_parameter
+  plot(counters, NtDelta[,1],type="S",col=2,lwd=1,
+       xlab="", ylab="N (counter)",
+       xlim = c(0,max_seconds),
+       main=paste("Trajectories of the first 10 generated inhomogeneous Poisson processes\n",
+                  "with above rate function and delta parameter ",
+                  delta_parameter, sep=""))
   for (i in 2:10) {
-    lines(poisson_processes[i,],counter,type="S",lwd=1,col=i+1)
+    lines(counters, NtDelta[,i],type="S",lwd=1,col=i+1)
   }
+  # Plots the raster plot
+  events = list()
+  for (i in 1:dim(jumps)[2]) {
+    lst = jumps[,i]*counters
+    events = append(events, list(lst[sapply(lst, function(x){x!=0})]))
+  }
+  if (length(events) >= 100) {
+    events = as.repeatedTrain(events[1:100])
+    title = paste0("Raster plot of the first 100 inhomogeneous\n",
+             " Poisson processes with delta parameter: ", delta_parameter)
+  } else {
+    events = as.repeatedTrain(events)
+    title = paste0("Raster plot of the generated inhomogeneous\n",
+             " Poisson processes with delta parameter: ", delta_parameter)
+  }
+  plot(events, colStim = "grey80", main=title, 
+         ylab="Trials", yaxt="n", xlab="Time (s)",
+         xlim=c(0,max_seconds))
+  # returns
+  return(list("NtDelta"=NtDelta, "jumps"=jumps, "counters"=counters, "events"=events))
 }
 
 ```
 
-**Results** --
+**Results** -- We can now run a set of simulations over the length of time of a single minute using the poor and robust algorithm. Using the rate_function_2 outputs warnings due to the creation of NAs -- those are replaced by 0 in the code instead.
 
-**Comments** --
+```{r inhomogeneous_poor_robust_simulation_runs}
+
+max_seconds = 60 
+delta_parameter = 0.01
+n_simulations = 100
+
+simulation_rate_function_1 = inhomogeneous_poor_robust_simulate(
+  rate_function_1, 2, delta_parameter, n_simulations, max_seconds
+)
+simulation_rate_function_2 = inhomogeneous_poor_robust_simulate(
+  rate_function_2, rt2_norm, delta_parameter, n_simulations, max_seconds
+)
+
+```
+
+We now can display the results:
+
+```{r inhomogeneous_poor_robust_rf1_visualization, out.width="100%"}
+
+sim_rf1_results = plot_inhomogeneous_poor_robust_simulations(
+  simulation_rate_function_1, 
+  delta_parameter, 
+  max_seconds, 
+  rate_function_1,
+  2
+)
+
+```
+
+```{r inhomogeneous_poor_robust_rf2_visualization, out.width="100%"}
+
+sim_rf2_results = plot_inhomogeneous_poor_robust_simulations(
+  simulation_rate_function_2, 
+  delta_parameter, 
+  max_seconds, 
+  rate_function_2,
+  rt2_norm
+)
+
+```
+
+**Comments** -- We have based our inhomogeneous Poisson process modeling on the poor and robust algorithm distribution. Moreover, for simulation purposes, we set our generation process on a 60-second period with a delta parameter $\delta=0.01$. As such, we can visually attest of a non-homogeneous generation process (as seen above). a maximum amount of state jumps (from 0 to 1, then 1 to 2, etc.).
 
 ### Step 2, algorithm with rejection procedure implementation
 
@@ -380,6 +406,72 @@ plot_trajectories <- function(poisson_processes, parameter) {
 
 **Method** -- 
 
-**Results** --
+```{r rejection_algorithm_simulations}
+
+inhomogeneous_rejection_simulate_v1 <- function(
+  rate_function, normalization_factor, 
+  delta_parameter, n_simulations, max_seconds=10
+){
+  ### Generates <n_simulations> of an inhomogeneous Poisson process
+  ### given the rejection algorithm
+  # 
+  # Generates a base matrix of sequences from 0 to <max_seconds> by
+  # <delta_parameter> steps
+  simulations = apply(matrix(0, nrow=n_simulations),1,
+                      function(x){seq(0,max_seconds,delta_parameter)})
+  # Maps the rate_function over each simulations
+  simulated_spikes = apply(simulations, c(1,2), 
+                           function(t){rate_function(t, normalization_factor)})
+  # Since the simulated spikes are based on a rate function that is normalized
+  # it is equivalent to having a probability
+  # Decides using a binomial draw whether to keep a spike or not by creating
+  # a Boolean mask
+  keep_or_reject = apply(simulated_spikes, c(1,2),
+                         function(x){rbinom(1,1,x)})
+  keep_or_reject[is.na(keep_or_reject)]=0
+  events = list()
+  for (i in 1:dim(keep_or_reject)[2]) {
+    events = append(events, list(simulations[,i][as.logical(keep_or_reject[,i])]))
+  }
+  return(list("NtDelta"="simulations", "jumps"=""))
+}
+
+inhomogeneous_rejection_simulate_v2 <- function(
+  rate_function, normalization_factor, 
+  delta_parameter, n_simulations, max_seconds=10
+){
+  ### Generates <n_simulations> of an inhomogeneous Poisson process
+  ### given the rejection algorithm
+  # 
+  # Generates a homogeneous Poisson process matrix
+  simulations = homogeneous_poisson_process_simulation(1,1.5*max_seconds, n_simulations)
+  spike_times = list()
+  for (i in 1:n_simulations){
+    sims = list(simulations$simulations[i,2:(1.5*max_seconds)][simulations$simulations[i,]<=max_seconds])
+    spike_times = append(simulations_temp, sims)
+  }
+  return(list("NtDelta"="simulations", "jumps"=""))
+}
+
+```
+
+**Results** -- We can now run a set of simulations over the length of time of a single minute with the rejection algorithm. Using the rate_function_2 outputs warnings due to the creation of NAs -- those are replaced by 0 in the code instead.
+
+```{r inhomogeneous_poor_robust_simulation_runs}
+
+max_seconds = 60 
+delta_parameter = 0.01
+n_simulations = 100
+
+simulation_rate_function_1 = inhomogeneous_rejection_simulate(
+  rate_function_1, 2, delta_parameter, n_simulations, max_seconds
+)
+simulation_rate_function_2 = inhomogeneous_rejection_simulate(
+  rate_function_2, rt2_norm, delta_parameter, n_simulations, max_seconds
+)
+
+```
+
+We now can display the results:
 
 **Comments** --
