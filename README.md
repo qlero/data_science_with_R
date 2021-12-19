@@ -44,6 +44,8 @@ R Markdown file offering an overview of kernel estimator cross-validation, and n
 
 R Markdown file offering an overview of homogeneous and non-homogeneous Poisson Processes and their simulation using different algorithms. 
 
+<img src="assets/poisson.png" width="600">
+
 #### License
 
 MIT, see `LICENSE.txt`
