@@ -1,0 +1,138 @@
+---
+title: "Point Processes"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+<hr>
+
+## Question 1 - A bit of statistics with Poisson processes
+
+We are observing two independent spike trains on the same interval $[0, T]$ and we want to test if their firing rate is the same. We will assume here that we have two independent Poisson processes $N^a$ and $N^b$ with rate $\lambda_a(.)$ and $\lambda_b(.)$, not necessarily constant.
+
+**A** -- What is the distribution of $N^a_T$ and $N^b_T$, respectively the number of points of $N^a$ and $N^b$ in $[0,T]$? Are these variables independent?
+
+**B** -- Compute $\mathbb{P}(N^a_T=k \cup N^b_T=l)$ for all $k$ and $l$.
+
+**C** -- Let $N_T= N^a_T+N^b_T$. Compute $\mathbb{P}(N_t=n)$ for all $n$. Can you give the name and the parameters of this distribution?
+
+**D** -- Compute $\mathbb{P}(N^a_t=k|N_t=n)$. *You can first see that $k$ has to be less than $n$ and that in this case $N^b_T = n-k$*. Can you give the name and the parameters of this conditional distribution?
+
+**E** -- Under the null hypothesis that $\lambda_a(.) = \lambda_b(.)$, realize that the previous distribution is known and derive from it a test of $H_0:\lambda_a(.)=\lambda_b(.)$ versus $H_1:\lambda_a(.)\ge\lambda_b(.)$
+
+**F** -- Apply it on the data of the STAR package for two different neurons. NB: *If $N^1, ..., N^n$ are IID Poisson processes with intensity $\lambda(.)$ then $N = N^1\cup ...\cup N^n$ is a Poisson process with rate $n\lambda(.)$. You can use that to glue all the trials together.*
+
+### step A
+
+**<u>GOAL</u>**
+
+**<u>METHOD(S)</u>**
+
+**<u>RESULT(S)</u>**
+
+**<u>COMMENTS</u>**
+
+### step B
+
+**<u>GOAL</u>**
+
+**<u>METHOD(S)</u>**
+
+**<u>RESULT(S)</u>**
+
+**<u>COMMENTS</u>**
+
+### step C
+
+**<u>GOAL</u>**
+
+**<u>METHOD(S)</u>**
+
+**<u>RESULT(S)</u>**
+
+**<u>COMMENTS</u>**
+
+### step D
+
+**<u>GOAL</u>**
+
+**<u>METHOD(S)</u>**
+
+**<u>RESULT(S)</u>**
+
+**<u>COMMENTS</u>**
+
+### step E
+
+**<u>GOAL</u>**
+
+**<u>METHOD(S)</u>**
+
+**<u>RESULT(S)</u>**
+
+**<u>COMMENTS</u>**
+
+### step F
+
+**<u>GOAL</u>**
+
+**<u>METHOD(S)</u>**
+
+**<u>RESULT(S)</u>**
+
+**<u>COMMENTS</u>**
+
+<hr>
+
+## Question 2 - Simulation
+
+**A** -- Simulate by thinning a Poisson process with intensity $t\rightarrow h(t) = (1-t^2)$ when $t\in[0,1]$ and $0$ elsewhere.
+
+**B** -- How many points should produce such a process in average? Verify it on you computer.
+
+**C** -- Simulate parents $T_p$ according to a Poisson process of rate $M$. Then for each parent simulate their children that have appeared after them according to a Poisson process with intensity $h(t-T_p)$. 
+
+**D** -- Interpret this process as a particular case of Multivariate Hawkes process with 2 processes, for which you will give spontaneous parameters and intercation functions. Find another way to simulate this by success thinning. *NB: These algorithms are complex, try first to write it down on a sheet of paper before implementing them*
+
+### step A
+
+**<u>GOAL</u>**
+
+**<u>METHOD(S)</u>**
+
+**<u>RESULT(S)</u>**
+
+**<u>COMMENTS</u>**
+
+### step B
+
+**<u>GOAL</u>**
+
+**<u>METHOD(S)</u>**
+
+**<u>RESULT(S)</u>**
+
+**<u>COMMENTS</u>**
+
+### step C
+
+**<u>GOAL</u>**
+
+**<u>METHOD(S)</u>**
+
+**<u>RESULT(S)</u>**
+
+**<u>COMMENTS</u>**
+
+### step D
+
+**<u>GOAL</u>**
+
+**<u>METHOD(S)</u>**
+
+**<u>RESULT(S)</u>**
+
+**<u>COMMENTS</u>**
