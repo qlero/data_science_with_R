@@ -27,43 +27,98 @@ We are observing two independent spike trains on the same interval $[0, T]$ and 
 
 ### step A
 
-**<u>GOAL</u>**
+Given that the two independent Poisson processes $N^a$ and $N^b$ don't have necessarily constant rates $\lambda_a(.)$ and $\lambda_b(.)$, we can consider them inhomogeneous Poisson process over an interval $[0,T]$. As such, given the random variables $N^a_T$ and $N^b_T$ the number of points of $N^a$ and $N^b$ that happened in the interval $[0,T]$, we have:
 
-**<u>METHOD(S)</u>**
+\begin{align}
+N^a_T&\sim\mathbb{P}\big(\int_{[0,T]}\lambda_a(x)dx\big)\\
+N^b_T&\sim\mathbb{P}\big(\int_{[0,T]}\lambda_b(x)dx\big)\\
+\text{Where}&,\\
+\lambda_a&,\text{ the intensity of the process $a$}\\
+\lambda_b&,\text{ the intensity of the process $b$}
+\end{align}
 
-**<u>RESULT(S)</u>**
+Based on [wikipedia](https://en.wikipedia.org/wiki/Poisson_point_process)'s formulas, we can state the following:
 
-**<u>COMMENTS</u>**
+\begin{align}
+\Lambda_a(0, T)&=\int_{[0,T]}\lambda_a(x)dx\\
+\Lambda_b(0, T)&=\int_{[0,T]}\lambda_b(x)dx\\
+P(N^a_T=k)&=\frac{\big[\Lambda_a(0, T)\big]^k}{k!}.e^{-\Lambda_a(0, T)}\\
+P(N^a_T=l)&=\frac{\big[\Lambda_b(0, T)\big]^l}{l!}.e^{-\Lambda_b(0, T)}
+\end{align}
+
+Given that the two Poisson processes $N^a$ and $N^b$ are independent, we can consider the random variables $N^a_T$ and $N^b_T$ to be independent as well.
 
 ### step B
 
-**<u>GOAL</u>**
+Based on our independence hypothesis stated in step A, we can say that, for two random variable $X$ and $Y$ that $P(X\cup Y)=P(X).P(Y)$. As such:
 
-**<u>METHOD(S)</u>**
-
-**<u>RESULT(S)</u>**
-
-**<u>COMMENTS</u>**
+\begin{align}
+\mathbb{P}(N^a_T=k \cup N^b_T=l)&=\mathbb{P}(N^a_T=k) * \mathbb{P}(N^b_T=l)\\
+&= \frac{\big[\Lambda_a(0, T)\big]^k}{k!}.e^{-\Lambda_a(0, T)} * \frac{\big[\Lambda_b(0, T)\big]^l}{l!}.e^{-\Lambda_b(0, T)}\\
+&= \frac{\big[\Lambda_a(0, T)\big]^k\big[\Lambda_b(0, T)\big]^l}{k!l!}.e^{-(\Lambda_a(0, T)+\Lambda_b(0, T))}\\
+&= \frac{\big[\Lambda_a(0, T)\big]^k\big[\Lambda_b(0, T)\big]^l}{k!l!}.e^{-(\int_{[0,T]}\lambda_a(x)+\lambda_b(x)dx)}
+\end{align}
 
 ### step C
 
-**<u>GOAL</u>**
+We previously found:
 
-**<u>METHOD(S)</u>**
+\begin{align}
+\mathbb{P}(N^a_T=k \cup N^b_T=l)&= \frac{\big[\Lambda_a(0, T)\big]^k\big[\Lambda_b(0, T)\big]^l}{k!l!}.e^{-(\Lambda_a(0, T)+\Lambda_b(0, T))}\\
+\end{align}
 
-**<u>RESULT(S)</u>**
+As such, we can state:
 
-**<u>COMMENTS</u>**
+\begin{align}
+\mathbb{P}(N^a_T+N^b_T=n)&=\mathbb{P}(N^a_T=k, N^b_T=n-k)\quad\forall n,k\in\mathbb{N} \text{ s.t. } n-k>=0\\
+&=\binom{n}{k}\mathbb{P}(N^a_T=k \cup N^b_T=n-k)\\
+&=\binom{n}{k}\frac{\big[\Lambda_a(0, T)\big]^k\big[\Lambda_b(0, T)\big]^{n-k}}{k!(n-k)!}.e^{-(\Lambda_a(0, T)+\Lambda_b(0, T))}\\
+&=e^{-(\Lambda_a(0, T)+\Lambda_b(0, T))}.\binom{n}{k}\frac{\big[\Lambda_a(0, T)\big]^k\big[\Lambda_b(0, T)\big]^{n-k}}{k!(n-k)!}\\
+\end{align}
+
+Relying on the binomial formula, we can then state:
+
+\begin{align}
+\mathbb{P}(N^a_T+N^b_T=n)&=e^{-(\Lambda_a(0, T)+\Lambda_b(0, T))}.\frac{\big[\Lambda_a(0, T)+\Lambda_b(0, T)\big]^{n}}{n!}\\
+\end{align}
+
+As such, we find:
+
+The sum of the random variables $N^a_T$ and $N^b_T$ also follows a Poisson distribution with parameter/rate $\Lambda_a(0, T)+\Lambda_b(0, T)$.
+
+\begin{align}
+N^a_T+N^b_T&\sim\mathbb{P}\big(\int_{[0,T]}\lambda_a(x)+\lambda_b(x)dx\big)\\
+\end{align}
+
+This can be verified with the Theorem 18.2 "Superposition of independent Poisson processes" (Source: [MAT135B: Stochastic Processes, complete lecture notes, Spring 2011, page 200 ](https://www.math.ucdavis.edu/~gravner/MAT135B/materials/)), reproduced here:
+
+- *Assume that $N_1(t)$ and $N_2(t)$ are independent Poisson processes with rates $\lambda_1$ and $\lambda_2$. Combine them into a single process by taking the union of both sets of events or, equivalently, $N(t) =
+N_1(t) + N_2(t)$. This is a Poisson process with rate $\lambda_1 + \lambda_2$.*
 
 ### step D
 
-**<u>GOAL</u>**
+We know that:
 
-**<u>METHOD(S)</u>**
+\begin{align}
+P(X,Y)&=P(X).P(Y)\quad\text{when $X$ and $Y$ are independent}\\
+P(X|Y)&=\frac{P(X,Y)}{P(Y)}
+\end{align}
 
-**<u>RESULT(S)</u>**
+As such:
 
-**<u>COMMENTS</u>**
+\begin{align}
+\mathbb{P}(N^a_T=k|N_T=n)&=\frac{\mathbb{P}(N^a_T=k,N_T=n)}{\mathbb{P}(N_T=n)}\\
+&=\frac{\mathbb{P}(N^a_T=k,N^a_T + N^b_T=n)}{\mathbb{P}(N^a_T + N^b_T=n)}\\
+&=\frac{\mathbb{P}(N^a_T=k,N^b_T=n-k)}{\mathbb{P}(N^b_T=n-k)}\\
+&=\frac{\mathbb{P}(N^a_T=k).\mathbb{P}(N^b_T=n-k)}{\mathbb{P}(N^b_T=n-k)}\\
+&=\mathbb{P}(N^a_T=k)\\
+\end{align}
+
+As such, we find:
+
+The the conditional probability $N^a_T=k|N_T=n$, by independence between $N^a_T$ and $N^b_T$ also follows a Poisson distribution with parameter/rate $\Lambda_a(0, T)$:
+
+$$\mathbb{P}(N^a_T=k|N_T=n)=\mathbb{P}(N^a_T=k)$$
 
 ### step E
 
