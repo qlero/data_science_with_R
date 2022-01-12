@@ -48,6 +48,8 @@ P(N^a_T=l)&=\frac{\big[\Lambda_b(0, T)\big]^l}{l!}.e^{-\Lambda_b(0, T)}
 
 Given that the two Poisson processes $N^a$ and $N^b$ are independent, we can consider the random variables $N^a_T$ and $N^b_T$ to be independent as well.
 
+**Summary**: The random variable $N_T^a$ obeys a Poisson distribution with parameter $\int_0^T\lambda_a(s)ds$. Simularly $N_T^b$ obeys a Poisson distribution with parameter $\int_0^T\lambda_b(s)ds$. Since those Poisson processes are independent, $N_T^a$ and $N_T^b$ are also independent.
+
 ### step B
 
 Based on our independence hypothesis stated in step A, we can say that, for two random variable $X$ and $Y$ that $P(X\cup Y)=P(X).P(Y)$. As such:
@@ -67,7 +69,7 @@ We previously found:
 \mathbb{P}(N^a_T=k \cup N^b_T=l)&= \frac{\big[\Lambda_a(0, T)\big]^k\big[\Lambda_b(0, T)\big]^l}{k!l!}.e^{-(\Lambda_a(0, T)+\Lambda_b(0, T))}\\
 \end{align}
 
-As such, we can state:
+As such, for any integer $n\ge0$, we can state:
 
 \begin{align}
 \mathbb{P}(N^a_T+N^b_T=n)&=\mathbb{P}(N^a_T=k, N^b_T=n-k)\quad\forall n,k\in\mathbb{N} \text{ s.t. } n-k>=0\\
@@ -95,6 +97,18 @@ This can be verified with the Theorem 18.2 "Superposition of independent Poisson
 - *Assume that $N_1(t)$ and $N_2(t)$ are independent Poisson processes with rates $\lambda_1$ and $\lambda_2$. Combine them into a single process by taking the union of both sets of events or, equivalently, $N(t) =
 N_1(t) + N_2(t)$. This is a Poisson process with rate $\lambda_1 + \lambda_2$.*
 
+
+**Other solution**:
+
+\begin{align}
+\mathbb{P}(N_T=n)&=\overset{n}{\underset{k=0}{\sum}}\mathbb{P}(N_T^a=k\cup N_T^b=n-k)\\
+&=\underset{k=0}{\overset{n}{\sum}}\frac{\int_0^T\lambda_a(s)ds}{k!}.\frac{\int_0^T\lambda_b(s)ds}{(n-k)!}.e^{-(\Lambda_a(0, T)+\Lambda_b(0, T))ds}\\
+&=\frac{e^{-(\Lambda_a(0, T)+\Lambda_b(0, T))ds}}{n!}\underset{k=0}{\overset{n}{\sum}}\binom{n}{k}\big(\int_0^T\lambda_a(s)ds\big)^k\big(\int_0^T\lambda_b(s)ds\big)^{n-k}\\
+\mathbb{P}(N_T=n)&=\frac{(\int_0^T[\lambda_a(s)+\lambda_b(s)]ds)^n}{n!}.e^{-(\Lambda_a(0, T)+\Lambda_b(0, T))ds}
+\end{align}
+
+The variable $N_T$ obeys a Poisson distribution with parameter $\int_0^T[\lambda_a(s)+\lambda_b(s)]ds$.
+
 ### step D
 
 We know that:
@@ -115,20 +129,63 @@ As such:
 &=\frac{\frac{\big[\Lambda_a(0, T)\big]^k}{k!}.\frac{\big[\Lambda_b(0, T)\big]^{n-k}}{(n-k)!}}{\frac{\big[\Lambda_a(0, T)+\Lambda_b(0, T)\big]^{n}}{n!}}\\
 &=\frac{n!\big[\Lambda_a(0, T)\big]^k.\big[\Lambda_b(0, T)\big]^{n-k}}{k!(n-k)!\big[\Lambda_a(0, T)+\Lambda_b(0, T)\big]^{n}}\\
 &=\binom{n}{k}\frac{\big[\Lambda_a(0, T)\big]^k.\big[\Lambda_b(0, T)\big]^{n-k}}{\big[\Lambda_a(0, T)+\Lambda_b(0, T)\big]^{n}}\\
-&=\binom{n}{k}\frac{\big[\Lambda_a(0, T)\big]^k.\big[\Lambda_b(0, T)\big]^{n-k}}{\underset{k'=0}{\overset{n}{\sum}}\binom{n}{k'}\Lambda_a(0, T)^{k'}\Lambda_b(0, T)^{n-k'}}\\
 \end{align}
 
-As such, we find:
+As such, we want to find a form such that: $\mathbb{P}(N^a_T=k|N_T=n)=\binom{n}{k}p^k(1-p)^{n-k}$
 
+We find that: $$p=\frac{\int^T_0\lambda_a(s)ds}{\int_0^T[\lambda_a(s)+\lambda_b(s)]ds}$$
 
+Conditionally to $N_T$, the variable $N_T^a$ obeys a Binomial distribution with parameter $p$ and $N_T$.
 
 ### step E
 
+Under the null hypothesis **H0**: $\lambda_a(.)=\lambda_b(.)$, we have $p=\frac{1}{2}$ and then $N_T^a\sim\mathcal{B}(p, N_T)$ conditionally to $N_T$. Under **H1**: $\lambda_a(.)\ge\lambda_b(.)$ the probability $p$ is larger than $\frac{1}{2}$ and then $N_T^a$ would be larger.
 
+So we reject **H0** when $N_T^a\ge c$ where $c$ is the $1-\alpha$ quantile of $\mathcal{B}(p, N_T)$. Notice that this value is random and depends on $N_T$. More precisely, we want $c$ such that $$\mathbb{P}(N_T^a\ge c|N_T)\le \alpha$$ that is $$1-F_{\mathcal{B}(p, N_T)}(c-1)\le\alpha$$ where $F_{\mathcal{B}(p, N_T)}$ is the cumulative distribution function of $\mathcal{B}(p, N_T)$. Indeed we have:
+
+\begin{align}
+\mathbb{P}(N_T^a\ge c|N_T)&=1-\mathbb{P}(N_T^a<c|N_t)\\
+&=1-\mathbb{P}(N_T^a\le c-1|N_t)\\
+\end{align}
+
+and then the p-value is given by $1-F_{\mathcal{B}(p, N_T)}(N_T^a-1)$
 
 ### step F
 
+```{r}
 
+pval_bin=function(NaT,NT)
+{
+  return(1-pbinom(NaT-1,prob=0.5,size=NT))
+}
+
+
+library(STAR)
+
+data(e070528citronellal)
+
+Spikes_N1=c()
+
+for(i in 1:15)
+{
+  spikes=as.vector(e070528citronellal[["neuron 1"]][[i]])
+  Spikes_N1=c(Spikes_N1,spikes[which(spikes>6.64)])
+}
+
+Spikes_N2=c()
+
+for(i in 1:15)
+{
+  spikes=as.vector(e070528citronellal[["neuron 2"]][[i]])
+  Spikes_N2=c(Spikes_N2,spikes[which(spikes>6.64)])
+}
+
+NbT=length(Spikes_N1)
+NaT=length(Spikes_N2)
+
+pval_bin(NaT,NaT+NbT)
+
+```
 
 <hr>
 
@@ -144,7 +201,6 @@ As such, we find:
 
 ### step A
 
-
 Overall, the intensity function decreases over the space $t\in[0, 1]$ as such:
 
 ```{r, out.width="100%"}
@@ -156,6 +212,9 @@ plot(c, func(c), type="l")
 ```
 
 Intuitively, we would expect the poisson process to not always output a single point as the intensity is a decreasing function of time. 
+
+**Note** -- The intensity $h(t) = (1 − t^2 )\mathbb{1}_{t\in[0,1]}$ is bounded by 1. Then in the thinning strategy, one should simulate $\mathcal{E}(1)$ variables until their cumulative sum is larger than 1. This is the $T_i$’s.
+We take the times that are smaller than 1. For them, we simulate the $U_i$’s and compare with h to accept or reject it.
 
 So, given the intensity $h(t)=(1-t^2)$, we set $M=1$ as $\forall t\in [0, 1],\,h(t)<=1$. We produce the following thinning simulator:
 
@@ -241,7 +300,154 @@ Our empirical observation seems to match our mathematical computation.
 
 ### step C
 
+Let us simulate parents and children on $[0, T_{max}]$:
 
+**Algorithm**:
+- $T_{max}$ has to be a parameter in entry as well as $M$)
+- Generate a Poisson process with rate $M$ for the parents on $[, T_{max}]$. Let us denote by $T_{p_1}, ..., T_{p_n}$ those parents.
+- For each of them generate children
+- Remove the points that are larger than $T_{max}$
+
+```{r, out.width="100%"}
+
+
+MyPoisson=function() # nb nothing in entries !
+{
+  t=0
+  Ti=c()
+  while(t<1)
+  {
+    tau=rexp(1,rate=1)
+    Ti=c(Ti,t+tau)
+    t=t+tau
+  }
+  Ti=Ti[which(Ti<1)] # I remove the last point
+  lt=length(Ti)
+  if(lt>0)
+    {
+      mark=rep(0,lt)
+      for(i in 1:lt)
+      {
+        Ui=runif(1)
+        if(Ui<(1-Ti[i]^2))
+        {
+          mark[i]=1
+        }
+      }  
+      return(Ti[which(mark==1)])
+  }else{
+      return(c())
+    }
+}
+
+Ti=MyPoisson()
+
+# b/
+
+Nsimu=1000
+res=rep(0,Nsimu)
+for(i in 1: Nsimu)
+{
+  res[i]=length(MyPoisson())
+}
+
+mean(res)
+barplot(table(res)) # to see the distribution in addition to the mean
+
+# c/
+
+
+Successive=function(M,Tmax)
+{
+  ### generating parents
+  Ntot=rpois(1,lambda=(Tmax*M))
+  Tp=runif(Ntot,max=Tmax,min=0) ### NB this is another way to simulate POisson process. You can also cumulate exponential with parameter M until you're above Tmax
+  
+  ### generating the children
+  Tchil=c()
+  np=length(Tp)
+  for(i in 1:np)
+  {
+    Tchil=c(Tchil,(MyPoisson()+Tp[i]))
+  }
+  Tchil=Tchil[which(Tchil<Tmax)]
+  return(list(parents=Tp,children=Tchil))
+}
+
+```
 
 ### step D
 
+In fact, it is a Hawkes process with two coordinates:
+1. Parents (mark 1) have intensity $M$, then $v_1=M$ and $h_{1\rightarrow 1}=h_{2\rightarrow1}=0$
+2. Children (mark 2) have intensity $\int_0^th(t-s)dN_s$, then $v_2=0, h_{1\rightarrow2=h}$ and $h_{2\rightarrow2} = 0$
+
+We want to simulate a Poisson process with intensity $\sum_{T_p}h(t-T_p)+M$
+Since the support of $h$ is $[0, 1]$, this quantity is bounded by:
+
+$$M'=M + N_{[T-1, T]}^{\text{parents}}$$
+
+at time $T$, where $N_{[T-1, T]}^{\text{parents}}$ is the number of parents in $[T-1, T]$.
+
+Algorithm:
+- At time $0$, the intensity is $M$. We then make a time step of length $\tau=\mathcal{E}(M)$ and the next time $\tau$ is always accepted as a parent.
+- At time $T$, we make a time step of length $\tau'=\mathcal{E}(M')$ and set $T_{next}=T+\tau'$. We also draw a mark $\mathcal{U}([0, M'])$:
+  - if the mark is lower than $M$, we accept $T$ as a parent
+  - If the mark is in the interval: $$\big[M, M+\underset{T_p\text{ with }T_{next}-1\le T_p <T_{next}}h(T_{next]-T_p})\big[$$
+  - then we accept $T$ as a child
+  - otherwise, $T$ is rejected
+We perform that until $T$ is larger than $T_{max}$
+
+```{r}
+
+MyThinning=function(M,Tmax)
+{
+  Tp=c()
+  Tchil=c()
+  # initialization : I need upper bound on the sum of the intensity of both processes to generate candidates. Here is the case where this upper bound will change throughout the algorithm
+  Max=M
+  
+  
+  myT=rexp(1,rate=Max) # the first potential point
+  Tp=c(Tp,myT) # I know it is a parent, and that it cannot be a child at the beginning. So no need to check on the uniform mark I append directly, to the parent.
+  
+  while(myT<Tmax)
+  {
+    Max=M+length(which((Tp<=myT)&(Tp>=myT-1))) #I count the parents in a window of length 1 before myT and compute the new upper bound on the sum of both intensities
+    myT=myT+rexp(1,rate=Max)
+    myU= runif(1,max=Max,min=0)
+    if(myU<M) # then this is a parent
+    {
+      Tp=c(Tp,myT)
+    }
+    
+    # for the children it is more difficult, because we have to sum on all parents that are at distance at most 1 of myT
+    
+    currentTp=Tp[which((Tp<myT)&(Tp>=myT-1))] # be careful here we want the ones just before myT but not myT
+    
+    if((myU>=M)&(myU<M+sum(1-(myT-currentTp)^2)))
+    {
+      Tchil=c(Tchil,myT)   
+    }   
+  }
+  # we finish further than Tmax so we truncate
+  Tp=Tp[which(Tp<Tmax)]
+  Tchil=Tchil[which(Tchil<Tmax)]
+  return(list(parents=Tp,children=Tchil))
+  
+}
+
+ 
+res1=Successive(2,10)
+res2=MyThinning(2,10)
+
+plot(res1[[1]],rep(1,length(res1[[1]])),col='red',yaxt='n',xlab='time',ylab='n',main='Simulations',ylim=c(0,3))
+points(res1[[2]],rep(1,length(res1[[2]])),col='orange')
+
+points(res2[[1]],rep(2,length(res2[[1]])),col='blue')
+points(res2[[2]],rep(2,length(res2[[2]])),col='cyan')
+legend('topleft',c('Successive-parents','Successive-children','Thinning-parents','Thinning-children'),col=c('red','orange','blue','cyan'),pch=c(1,1,1,1))
+
+
+
+```
