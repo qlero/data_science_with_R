@@ -46,6 +46,10 @@ R Markdown file offering an overview of homogeneous and non-homogeneous Poisson 
 
 <img src="assets/poisson.png" width="600">
 
+## Project 9 - Simulating Point Processes
+
+R Markdown file offering a simulation of point processes, e.g. with a thinning process.
+
 #### License
 
 MIT, see `LICENSE.txt`
