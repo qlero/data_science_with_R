@@ -1,0 +1,172 @@
+---
+title: "Point Processes"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+<hr>
+
+## Question 1 - Maximum likelihood for Markov chain 
+
+Given a cognitive context of sleeping patterns, a check is performed every five minutes on study participants and their state is noted. We want to model this by a (discrete) Markov chain with 3 states:
+- "sleeping"
+- "(fully) awake"
+- "drowsy"
+
+**Step A** -- Plot the diagrams and parametrize the two following (informal) models with the least
+possible amount of parameters
+- You can only pass from "fully awake" to "sleeping" through the state "drowsy" and
+vice-versa: you can only go from sleeping to "fully awake" through "drowsy".
+- It is possible (but not necessary) to be instantly awake or instantly sleeping and to
+skip the "drowsy" state.
+
+**Step B** -- Make a function in R which simulates the first model if you give in entries the state $x_0$,
+the parameters of the model (only the ones parametrizing the transitions) and the length of the chain to simulate $n$.
+
+
+**Step C** -- Write the (log)-likelihood of this problem and give the maximum likelihood estimator of $P_{D\rightarrow s}$, the probabilty to fall asleep when you are drowsy. Would it be different if we were in the second model?
+
+**Step D** -- Show on simulation that this estimator converges towards the true probability when n tends to infinity.
+
+**Step E** -- How would you decide if we are in the first or second model when you have the observations?
+
+### STEP A
+
+The first model is defined as in picture 1 attached, with a minimum of four parameters such that:
+
+\begin{align}
+\text{parameter space}&\text{:}\quad\{P_{A\rightarrow D},P_{S\rightarrow D},P_{D\rightarrow A},P_{D\rightarrow S})\\
+P_{A\rightarrow A}&=1-P_{A\rightarrow D}\\
+P_{S\rightarrow S}&=1-P_{S\rightarrow D}\\
+P_{D\rightarrow D}&=1-P_{D\rightarrow A}-P_{D\rightarrow S}\\
+\end{align}
+
+With $A$ the "awake" state, $S$ the "sleeping" state, and $D$ the "drowsy" state.
+
+[model1](images/model1.png)
+
+The second model is defined as in picture 2 attached, with a minimum of six parameters such that:
+
+\begin{align}
+\text{parameter space}&\text{:}\quad\{P_{A\rightarrow D},P_{A\rightarrow S},P_{S\rightarrow D},P_{S\rightarrow A},P_{D\rightarrow A},P_{D\rightarrow S})\\
+P_{A\rightarrow A}&=1-P_{A\rightarrow D}\\
+P_{S\rightarrow S}&=1-P_{S\rightarrow D}\\
+P_{D\rightarrow D}&=1-P_{D\rightarrow A}-P_{D\rightarrow S}\\
+\end{align}
+
+[model2](images/model2.png)
+
+### STEP B
+
+```{r generate_model_1}
+
+compute_jump <- function(state, p_AtoD, p_StoD, p_DtoS, p_DtoA){
+  ### Computes the next jump
+  if (state == "A"){
+    draw = rbinom(1, 1, p_AtoD)
+    if (draw == 1){
+      return("D")
+    } else {
+      return("A")
+    }
+  }
+  if (state == "S") {
+    draw = rbinom(1, 1, p_StoD)
+    if (draw == 1){
+      return("D")
+    } else {
+      return("S")
+    }
+  }
+  # Else (State is drowsy)
+  draw = runif(1, 0, 1)
+  if (draw < p_DtoS){
+      return("S")
+    } else if (draw < p_DtoS + p_DtoA) {
+      return("A")
+    } else {
+      return("D")
+    }
+}
+
+generate_process_from_model1 <- function(x0, n, p_AtoD, p_StoD, p_DtoS, p_DtoA){
+  ### Generates a process given the model 1 previously discribed
+  ### x0: start state, p_AtoD: jump probability from A to D, 
+  ### p_StoD: jump probability from S to D, n: process length
+  if (!x0 %in% c("A","S","D")) {
+    print("Wrong input for entry state x0")
+    return(0)
+  }
+  process = c(x0)
+  for (step in c(1:n)) {
+    x0 = compute_jump(x0, p_AtoD, p_StoD, p_DtoS, p_DtoA)
+    process = c(process, x0)
+  }
+  return(process)
+}
+
+```
+
+We produce a couple examples:
+
+```{r generated_model1_example1}
+
+p_AtoD = 0.4
+p_StoD = 0.2
+p_DtoS = 0.4 
+p_DtoA = 0.4
+generate_process_from_model1("A", 50, p_AtoD, p_StoD, p_DtoS, p_DtoA)
+generate_process_from_model1("S", 50, p_AtoD, p_StoD, p_DtoS, p_DtoA)
+generate_process_from_model1("D", 50, p_AtoD, p_StoD, p_DtoS, p_DtoA)
+
+```
+
+<hr>
+
+## Question 2 - Maximum likelihood for Poisson processes
+
+We are observing an inhomogeneous Poisson process with intensity $\lambda_0(.)$ on $[0, T_{max}]$. We want
+to estimate $\lambda_0(.)$ by a piecewise constant function on a regular partition, which means that the
+candidate intensities $\lambda(.)$ are, for a certain integer $d$ giving the number of bins, of the form:
+
+$$\lambda(t)=\underset{i=1}{\overset{d}{\sum}}a^d_i\mathbb{1}_{b_{i-1}^d\le t<b^d_i}$$
+With $b_i^d=\frac{i.T_{max}}{d}$
+
+**Step A** -- When $d = 1$, write the likelihood of the process and provide the maximum likelihood estimator of $a^1_1$. Implement it and show on simulation that when T_{max} grows, the estimation is converging when the process is homogeneous.
+
+**Step B** -- For a more general $d$ write the corresponding likelihood and give the maximum likelihood estimator of the different $a^d_i$.
+
+**Step C** -- Simulate by thinning a Poisson process of intensity $ne^{−x}$ and $n(1 + sin(x))$ on $[0, T_{max}]$ for various $n$. Superpose different MLE of the intensities for various choices of $d$ and $n$.
+
+**Step D** -- Apply AIC criterion to select for a given observed Poisson process a good $d$.
+
+**Step E** -- Apply it on the data of the STAR package, for instance the data citronellal (after having aggregated all the trials into just one point process).
+
+<hr>
+
+## Question 3 - 3. How do we check that our simulation is correct?
+
+**Step A** -- Build on Exercise 3 of tutorial 6 to provide a way to simulate a univariate Hawkes process
+with intensity:
+
+$$\lambda(t) = v + \underset{T\in N,\,T<t}{\sum}h(t-T)$$
+
+With $h(u)=1-u^2$ if $u\in[0, 1]$, 0 elsewhere.
+
+**Step B** -- By exchanging sums and integrals, show that $\Lambda(t)=\int_0^t\lambda(s)ds$ is equal to:
+
+$$vt + \underset{T\in N,\,T<t}{\sum}\int_T^{min(T+1, t)}(1-(s-T)^2)ds$$
+that is
+
+$$vt + \frac{2}{3}N_{t-1}+\underset{T\in N,\,t-1<T<t}{\sum}\big[t-T-\frac{(t-T)^3}{3}\big]$$
+
+With $N_{t-1}$ is the corresponding counting process at time $t-1$.
+
+**Step C** -- Program a function which for a given t computed $\lambda(t)$
+
+**Step D** -- Simulate a Hawkes process thanks to Step A and transform its points with $\Lambda$
+
+**Step E** -- On the transformed points, perform Ogata's tests to verify that we have indeed simulated a Hawkes process
