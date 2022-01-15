@@ -316,7 +316,7 @@ We find the following **log-likelihood**:
 
 From this, we can simulate the process and compute the resulting estimation:
 
-```{r simulation_poisson_process}
+```{r simulation_poisson_process, out.width="100%"}
 
 simulate_a11 <- function(a11, maximum_seconds){
   # Simulates a poisson process with a11 fixed (i.e. homogeneous)
@@ -354,7 +354,7 @@ simulation1 = simulate_a11(a11, 3600)
 
 ```
 
-We demonstrate convergence of the estimator via simulation.
+We demonstrate convergence of the estimator via simulation. And since the convergence is towards a single value, and given that if an intensity $\lambda$ is constant then the underlying Poisson process is homogeneous, we can conclude that the estimation is converging when the process is homogeneous.
 
 ### STEP B
 
@@ -372,7 +372,206 @@ $$\hat{a}_i^d=\frac{d.N_{[\frac{(i-1)T_{max}}{d}, \frac{iT_{max}}{d}]}}{T_{max}}
 
 ### STEP C
 
+We start by declaring our rate function and their integrals.
 
+```{r rate_function, out.width="100%"}
+
+rate_function_1 <- function(n, t){
+  n*exp(-t)
+}
+
+rate_function_2 <- function(n, t){
+  n*(1+sin(t))
+}
+
+#int_rate_function_1 <- function(n, a, b){
+#  -n*exp(-b)+n*exp(-a)
+#}
+
+#int_rate_function_2 <- function(n, a, b){
+#  n*(b-cos(b)) - n*(a-cos(a))
+#}
+
+example_n = 2
+x = matrix(seq(1:400)/100)
+rf1_y = apply(x, 1, function(x){rate_function_1(example_n,x)})
+rf2_y = apply(x, 1, function(x){rate_function_2(example_n,x)})
+
+plot(x, rf1_y, type="l", main=paste("Plot of intensity n*exp(-x)\n",
+                                    "on interval [0,4] with n=2"),
+     xlab = "Time", ylab="Intensity")
+plot(x, rf2_y, type="l", main=paste("Plot of intensity n(1-sin(x))\n",
+                                    "on interval [0,4] with n=2"),
+     xlab = "Time", ylab="Intensity")
+
+```
+
+We determine that the intensity $\lambda(t)=n*e^{-t}$ is upper-bounded by $N$, we call this upper bound $M_1=n$. We also determine that the intensity $\lambda(t)=n*(1-sin(t))$ is upper-bounded by $N*2$. We call this upper bound $M_2=n*2$. We will use $M_1$ and $M_2$ for our thinning process.
+
+We start with declaring our simulation functions (with thinning process) and MLE_estimator computation function.
+
+```{r thinning_process}
+
+simulate_on_1_interval <- function(n, a, b, M, rate_function) {
+  ### Simulate a counting process on a given interval of a Poisson process
+  draws = c()
+  while (a <= b) {
+    # Draws an Exponential random variable
+    draw = rexp(1, M)
+    a = a+draw
+    # Draws a Uniform random variable
+    bern = runif(1, 0, M)
+    # Checks if the generated point falls below the rate function
+    # and keeps it if so
+    # records the draw if need be
+    if (bern <= rate_function(n, a)){#} && a<=b){
+      draws = c(draws, a)
+    }
+  }
+  # Returns the draws
+  draws
+}
+
+poisson_process_thinning_simulation <- function(n, d, Tmax, M, rate_function) {
+  ### Simulate a Poisson process via thinning
+  bin_size = Tmax/d
+  a = 0
+  draws = c()
+  bins = c()
+  MLE = c()
+  while (a<Tmax){
+    if (a+bin_size > Tmax){
+      upper = Tmax
+    } else {
+      upper = a + bin_size
+    }
+    # Draws the Poisson process a hundred times on each given interval
+    length_draw = 0
+    for (i in 1:100){
+      new_draws = simulate_on_1_interval(n, a, upper, M, rate_function)
+      draws = c(draws, new_draws)
+      length_draw = length_draw + length(new_draws)
+    }
+    MLE = c(MLE, length_draw/(bin_size*100))
+    bins = c(bins, a)
+    a = a+bin_size
+  }
+  # Returns the draws
+  return(list(
+    "n"=n,
+    "d"=d,
+    "draws"=draws, 
+    "MLE_estimator_a"=MLE,
+    "bins"=bins
+    )
+  )
+}
+
+plot_estimator <- function(
+  n, d_range, Tmax, M, 
+  discretization_factor,
+  rate_function, 
+  title
+) {
+  ### Plots the computed estimators given a value n and a range of d values
+  ### a M value for the intensity function/rate function
+  i = length(d_range)+1
+  colors = c(2:(length(d_range)+2))
+  for (d in d_range) {
+    i = i - 1
+    x = matrix(seq(1:(Tmax*discretization_factor))/discretization_factor)
+    pp = poisson_process_thinning_simulation(
+      n, d, Tmax, M, rate_function
+    )
+    y = apply(x, 1, function(x){
+      if (d == 1){
+        pp$MLE_estimator_a
+        } else {
+          pp$MLE_estimator_a[d-length(pp$bins[pp$bins>=x])]
+        }
+    })
+    if (d == d_range[1]) {
+      plot(x, y, type="l", main=title,
+           ylim=c(0,M*1.5), col=colors[abs(i-length(d_range))+1])
+    } else {
+      lines(x, y, col=colors[abs(i-length(d_range))+1])
+    }
+    legend(
+      x="topright",
+      legend=apply(matrix(d_range),1, function(x){paste("d =", x)}),
+      fill=colors
+    )
+  }
+}
+
+```
+
+```{r}
+
+# Declares hyperparameters
+d = c(1, 5, 10, 50, 100)
+
+n = 50
+plot_estimator(
+  n, d, 10, n, 10, rate_function_1,
+  title=paste("MLE Estimation of parameter a given d-windows\n",
+        "n=",n,", intensity: n.exp(-x)", sep="")
+)
+
+n = 75
+plot_estimator(
+  n, d, 10, n, 10, rate_function_1,
+  title=paste("MLE Estimation of parameter a given d-windows\n",
+        "n=",n,", intensity: n.exp(-x)", sep="")
+)
+
+n = 100
+plot_estimator(
+  n, d, 10, n, 10, rate_function_1,
+  title=paste("MLE Estimation of parameter a given d-windows\n",
+        "n=",n,", intensity: n.exp(-x)", sep="")
+)
+
+n = 200
+plot_estimator(
+  n, d, 10, n, 10, rate_function_1,
+  title=paste("MLE Estimation of parameter a given d-windows\n",
+        "n=",n,", intensity: n.exp(-x)", sep="")
+)
+
+```
+
+```{r}
+
+n = 50
+plot_estimator(
+  n, d, 10, n*2, 10, rate_function_2,
+  title=paste("MLE Estimation of parameter a given d-windows\n",
+        "n=",n,", intensity: n.(1-sin(x))", sep="")
+)
+
+n = 75
+plot_estimator(
+  n, d, 10, n*2, 10, rate_function_2,
+  title=paste("MLE Estimation of parameter a given d-windows\n",
+        "n=",n,", intensity: n.(1-sin(x))", sep="")
+)
+
+n = 100
+plot_estimator(
+  n, d, 10, n*2, 10, rate_function_2,
+  title=paste("MLE Estimation of parameter a given d-windows\n",
+        "n=",n,", intensity: n.(1-sin(x))", sep="")
+)
+
+n = 200
+plot_estimator(
+  n, d, 10, n*2, 10, rate_function_2,
+  title=paste("MLE Estimation of parameter a given d-windows\n",
+        "n=",n,", intensity: n.(1-sin(x))", sep="")
+)
+
+```
 
 ### STEP D
 
