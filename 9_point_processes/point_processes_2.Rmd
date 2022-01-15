@@ -279,7 +279,7 @@ candidate intensities $\lambda(.)$ are, for a certain integer $d$ giving the num
 $$\lambda(t)=\underset{i=1}{\overset{d}{\sum}}a^d_i\mathbb{1}_{b_{i-1}^d\le t<b^d_i}$$
 With $b_i^d=\frac{i.T_{max}}{d}$
 
-**Step A** -- When $d = 1$, write the likelihood of the process and provide the maximum likelihood estimator of $a^1_1$. Implement it and show on simulation that when T_{max} grows, the estimation is converging when the process is homogeneous.
+**Step A** -- When $d = 1$, write the likelihood of the process and provide the maximum likelihood estimator of $a^1_1$. Implement it and show on simulation that when $T_{max}$ grows, the estimation is converging when the process is homogeneous.
 
 **Step B** -- For a more general $d$ write the corresponding likelihood and give the maximum likelihood estimator of the different $a^d_i$.
 
@@ -289,9 +289,99 @@ With $b_i^d=\frac{i.T_{max}}{d}$
 
 **Step E** -- Apply it on the data of the STAR package, for instance the data citronellal (after having aggregated all the trials into just one point process).
 
+### STEP A
+
+We observe $N$ a Poisson process with conditional intensity:
+
+\begin{align}
+\lambda(t)&=\underset{i=1}{\overset{d}{\sum}}a^d_i\mathbb{1}_{b_{i-1}^d\le t<b^d_i}\\
+&=a^1_1\quad\text{(When $d=1$)}
+\end{align}
+
+As such, we define the log-likelihood as:
+
+\begin{align}
+l_\lambda(N)&=\int_0^{T_{max}}log(\lambda(t))dN_t - \int_0^{T_{max}}\lambda(t)dt\\
+&=log(a^1_1).N_{[0,T_{max}]}-a^1_1.T_{max}\\
+\end{align}
+
+With $N_{[0, T_{max}]}$ the number of points in the bin $d$, i.e., in between 0 and $T_{max}$.
+
+We find the following **log-likelihood**:
+
+\begin{align}
+\frac{\delta}{\delta a^1_1}l_\lambda&=\frac{1}{a^1_1}.N_{[0,T_{max}]}-T_{max}\\
+&\Rightarrow \hat{a}^1_1=\frac{N_{[0, T_{max}]}}{T_{max}}
+\end{align}
+
+From this, we can simulate the process and compute the resulting estimation:
+
+```{r simulation_poisson_process}
+
+simulate_a11 <- function(a11, maximum_seconds){
+  # Simulates a poisson process with a11 fixed (i.e. homogeneous)
+  draws = c()
+  maxT = 0
+  while (maxT < maximum_seconds) {
+    draw = rexp(1, a11)
+    maxT = maxT + draw
+    draws = c(draws, draw)
+  }
+  poisson_process = cumsum(draws)
+  # Computes the estimator for a growing [0, T] window
+  estimators = c()
+  for (i in 1:maximum_seconds){
+    n_0Tmax = length(poisson_process[poisson_process<i])
+    estimators = c(estimators, (n_0Tmax/i))
+  }
+  plot(x=c(1:maximum_seconds), estimators, type="l", 
+       main=paste("Convergence of the MLE estimator of a^1_1=",a11,"\ngiven a",
+                  maximum_seconds, "-second-long process", sep=""),
+       xlab="Tmax used for estimation", ylab="MLE Estimator Value")
+  abline(h=a11, col="red")
+  return(list("process"=poisson_process, "estimators"=estimators))
+}
+
+# We provide 3 example rates over a maximum span of time of 1 hour
+a11 = 1
+simulation1 = simulate_a11(a11, 3600)
+  
+a11 = 0.1
+simulation1 = simulate_a11(a11, 3600)
+
+a11= 10
+simulation1 = simulate_a11(a11, 3600)
+
+```
+
+We demonstrate convergence of the estimator via simulation.
+
+### STEP B
+
+\begin{align}
+\lambda(t)&=\underset{i=1}{\overset{d}{\sum}}a^d_i\mathbb{1}_{b_{i-1}^d\le t<b^d_i}\\
+l_\lambda(N)&=\int_0^{T_{max}}log(\lambda(t))dN_t - \int_0^{T_{max}}\lambda(t)dt\\
+&=\underset{i=1}{\overset{d}{\sum}}log(d_i^d)N_{[b^d_{i-1}, b^d_i]}\\
+&=\underset{i=1}{\overset{d}{\sum}}log(d_i^d)N_{[\frac{(i-1)T_{max}}{d}, \frac{iT_{max}}{d}]}-a_i^d\frac{T_{max}}{d}\\
+\frac{\delta}{\delta a_i^d}l_\lambda(N)&=\frac{N_{[\frac{(i-1)T_{max}}{d}, \frac{iT_{max}}{d}]}}{a_i^d}-\frac{T_{max}}{d}
+\end{align}
+
+As such we find that for a given $d$ number of bins and $i$ bin, we have the MLE estimator of a_i^d:
+
+$$\hat{a}_i^d=\frac{d.N_{[\frac{(i-1)T_{max}}{d}, \frac{iT_{max}}{d}]}}{T_{max}}$$
+
+### STEP C
+
+
+
+### STEP D
+
+### STEP E
+
+
 <hr>
 
-## Question 3 - 3. How do we check that our simulation is correct?
+## Question 3 - How do we check that our simulation is correct?
 
 **Step A** -- Build on Exercise 3 of tutorial 6 to provide a way to simulate a univariate Hawkes process
 with intensity:
