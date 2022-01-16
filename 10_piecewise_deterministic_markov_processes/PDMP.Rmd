@@ -4,7 +4,7 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
 ```
 
 # Piecewise Deterministic Markov Processes (PDMP)
@@ -26,7 +26,7 @@ When a system jumps a new regime is chosen and thus a new position $V_t$.
 
 ## Simulating an example PDMP
 
-### Example setup
+### GOAL - Example setup
 
 Our target PDMP displays the following properties:
 
@@ -39,9 +39,9 @@ p&=1\\
 
 ![(display of example setup)](images/example.png)
 
-We are interested in this setup in the context of interspike interval distribution simulations.
+We are interested in this setup in the context of interspike interval distribution simulations and there will be implementing it below.
 
-### Implementing useful functions
+### METHOD - Implementing useful functions
 
 We start by implementing 4 key functions:
 
@@ -76,9 +76,10 @@ Given the rate function $\lambda(1, V_t)$, we consider the solution $\tilde{V}_t
 We bound the rate $\lambda(\tilde{V}_t)$ with an upper bound $K$ on $[0, T^1]$ along with a rejection procedure on the same interval.
 
 ![(Illustration of thinning process)](images/thinning.png)
-<u>**Functions**</u>
 
-```{r, out.width="100%"}
+<u>**Simulation Functions**</u>
+
+```{r}
 
 bernoulli_probability <- function(eta, v) {min(v^2*eta, 1)}
 
@@ -122,7 +123,7 @@ isi_simulation_rejection <- function(Tmax, T1, v_rest){
   upper = T1
   V = v_rest
   v_t = c(v_rest)
-  lambdas = c()
+  lambdas = c(lambda(v_rest))
   jumps = c()
   while (T) {
     K = lambda(V+(lower-upper))
@@ -149,6 +150,12 @@ isi_simulation_rejection <- function(Tmax, T1, v_rest){
   return(list("jumps"=jumps, "V_t"=v_t, "lambdas"=lambdas))
 }
 
+```
+
+<u>**Plotting Functions**</u>
+
+```{r}
+
 plot_simulation <- function(simulation, Tmax, eta, V_rest, rejection=F){
   title = paste("Simulated jumps on interval [0,", Tmax, "]\n",
                 "with parameters eta=", eta, ", V^r=", V_rest,
@@ -169,7 +176,6 @@ plot_simulation <- function(simulation, Tmax, eta, V_rest, rejection=F){
        new_lambdas = c(new_lambdas, c(lambdas[i], V_rest^2))
        new_V_t = c(new_V_t, c(V_t[i], V_rest))
      }
-     jumps = new_jumps
      lambdas = new_lambdas
      V_t = new_V_t
   }
@@ -194,14 +200,14 @@ plot_simulation <- function(simulation, Tmax, eta, V_rest, rejection=F){
     )
   } else {
     # Plots the lambda(V_t)
-    plot(jumps,lambdas, 
+    plot(new_jumps,lambdas, 
          type="l",ylab="values",xlab="eta step",col="blue",
-         main="lambda(V_t)"
+         main="lambda(V_t)", xlim=c(0,Tmax)
     )
     # Plots V_t
-    plot(jumps,V_t, 
+    plot(new_jumps,V_t, 
          type="l",ylab="values",xlab="eta step",col="green",
-         main="V_t"
+         main="V_t", xlim=c(0,Tmax)
     )
   }
   
@@ -214,11 +220,14 @@ plot_jumps <- function(simulation_function, Tmax, eta, V_rest, n_simulations){
     # Simulates
     sim = simulation_function(Tmax, eta, V_rest)$jumps
     # Plots
+    title = paste("10 simulated PDMP on interval [0,", Tmax, "]\n",
+          "with parameters T^1 or eta=", eta, ", V^r=", V_rest,
+          sep="")
     if (i==1) {
       plot(
         sim,rep(1,length(sim)),col=i+1, pch="|",
-        xlab='time',ylab='simulations',main='Simulations',
-        ylim=c(1,n_simulations), xlim=c(0,Tmax))
+        xlab='time',ylab='simulations',
+        ylim=c(1,n_simulations), xlim=c(0,Tmax), main=title)
     } else {
       points(sim,rep(i,length(sim)),col=i+1, pch="|")
     }
@@ -227,12 +236,11 @@ plot_jumps <- function(simulation_function, Tmax, eta, V_rest, n_simulations){
 
 ```
 
-### Simulation with the Poor/Robust algorithm
+### RESULTS - Simulation with the Poor/Robust algorithm
 
 We decide to simulate a PDMP on the interval $[0, 10]$ with the Poor/Robust algorithm, given a discretization parameter $\eta=0.1$, a value $V$ at rest $V^r=2$.
 
 The full PDMP setup becomes:
-
 
 \begin{align}
 p&=1\\
@@ -259,12 +267,11 @@ plot_jumps(isi_simulation_poor_robust,10,0.1,2,10)
 ```
 
 
-### Simulation with the Thinning/Rejection algorithm
+### RESULTS - Simulation with the Thinning/Rejection algorithm
 
 We decide to simulate a PDMP on the interval $[0, 10]$ with the Thinning/Rejection algorithm, given an intermediary interval delimiter parameter $T^1=0.1$, a value $V$ at rest $V^r=2$.
 
 The full PDMP setup becomes:
-
 
 \begin{align}
 p&=1\\
@@ -290,3 +297,169 @@ plot_jumps(isi_simulation_rejection,10,0.1,2,10)
 
 ```
 
+### RESULTS - Simulating PDMP with other parameters $\eta\text{ or }T^1$, $T_{max}$, $V^r$ to provide further examples
+
+<u>**Case 1**</u>
+
+\begin{align}
+p&=1\\
+\frac{dV_t}{dt}&=1\\
+T^1=\eta&=0.1\\
+T_{max}&=5\\
+V^r&=0.1\\
+\lambda(1, v)&=v^2\\
+\text{At the jump }(1, v)&\rightarrow(1, V^r)
+\end{align}
+
+**Simulation**
+
+```{r}
+
+eta = 0.1
+tmax = 5
+vr = 0.1
+
+# Simulates
+sim_p = isi_simulation_poor_robust(tmax,eta,vr)
+sim_r = isi_simulation_rejection(tmax,eta,vr)
+
+```
+
+**Plotting given the Poor/Robust Algorithm**
+
+```{r, out.width="100%"}
+
+# Plots a single simulations
+plot_simulation(sim_p,tmax,eta,vr)
+```
+```{r, out.width="100%"}
+plot_jumps(isi_simulation_rejection,tmax,eta,vr,10)
+
+```
+
+**Plotting given the Thinning/Rejection Algorithm**
+
+
+```{r, out.width="100%"}
+
+# Plots a single simulations
+plot_simulation(sim_r,tmax,eta,vr,T)
+```
+```{r, out.width="100%"}
+plot_jumps(isi_simulation_rejection,tmax,eta,vr,10)
+
+```
+
+<u>**Case 2**</u>
+
+\begin{align}
+p&=1\\
+\frac{dV_t}{dt}&=1\\
+T^1=\eta&=0.01\\
+T_{max}&=1\\
+V^r&=2\\
+\lambda(1, v)&=v^2\\
+\text{At the jump }(1, v)&\rightarrow(1, V^r)
+\end{align}
+
+**Simulation**
+
+```{r}
+
+eta = 0.01
+tmax = 1
+vr = 2
+
+# Simulates
+sim_p = isi_simulation_poor_robust(tmax,eta,vr)
+sim_r = isi_simulation_rejection(tmax,eta,vr)
+
+```
+
+**Plotting given the Poor/Robust Algorithm**
+
+```{r, out.width="100%"}
+
+# Plots a single simulations
+plot_simulation(sim_p,tmax,eta,vr)
+```
+```{r, out.width="100%"}
+plot_jumps(isi_simulation_rejection,tmax,eta,vr,10)
+
+```
+
+**Plotting given the Thinning/Rejection Algorithm**
+
+```{r, out.width="100%"}
+
+# Plots a single simulations
+plot_simulation(sim_r,tmax,eta,vr,T)
+```
+```{r, out.width="100%"}
+plot_jumps(isi_simulation_rejection,tmax,eta,vr,10)
+
+```
+
+<u>**Case 3**</u>
+
+\begin{align}
+p&=1\\
+\frac{dV_t}{dt}&=1\\
+T^1=\eta&=0.05\\
+T_{max}&=20\\
+V^r&=3\\
+\lambda(1, v)&=v^2\\
+\text{At the jump }(1, v)&\rightarrow(1, V^r)
+\end{align}
+
+**Simulation**
+
+```{r}
+
+eta = 0.05
+tmax = 20
+vr = 3
+
+# Simulates
+sim_p = isi_simulation_poor_robust(tmax,eta,vr)
+sim_r = isi_simulation_rejection(tmax,eta,vr)
+
+```
+
+**Plotting given the Poor/Robust Algorithm**
+
+```{r, out.width="100%"}
+
+# Plots a single simulations
+plot_simulation(sim_p,tmax,eta,vr)
+```
+```{r, out.width="100%"}
+plot_jumps(isi_simulation_rejection,tmax,eta,vr,10)
+
+```
+
+**Plotting given the Thinning/Rejection Algorithm**
+
+```{r, out.width="100%"}
+
+# Plots a single simulations
+plot_simulation(sim_r,tmax,eta,vr,T)
+```
+```{r, out.width="100%"}
+plot_jumps(isi_simulation_rejection,tmax,eta,vr,10)
+
+```
+
+### COMMENTS
+
+With the examples shown above, we can evidence that PDMP are highly dependent to their initial parameters (e.g. $V^r$, $\eta$, $\lambda(.)$, etc.). 
+
+Furthermore, we mentioned that this process is intended to model interspike intervals. By a visual check, we can see that, if we were to tweak our parameters, we could find convincing simulation via the use of PDMP. An example to keep in mind is the latest implementation, which we could compare with example interspike interval such as those available in the STAR package:
+
+```{r, out.width="100%"}
+
+library(STAR)
+data(e070528citronellal)
+e070528citronellal$`neuron 3`
+
+```
