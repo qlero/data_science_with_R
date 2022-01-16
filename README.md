@@ -50,6 +50,10 @@ R Markdown file offering an overview of homogeneous and non-homogeneous Poisson 
 
 R Markdown file offering a simulation of point processes, e.g. with a thinning process.
 
+## Project 10 - Simulating PDMP
+
+R Markdown file offering a simulation of a piecewise deterministic markov process.
+
 #### License
 
 MIT, see `LICENSE.txt`

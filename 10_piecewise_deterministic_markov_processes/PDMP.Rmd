@@ -1,0 +1,60 @@
+---
+title: "PDMP"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Piecewise Deterministic Markov Processes (PDMP)
+
+## Setup
+
+### PDMP in general
+
+Considering a finite number of regimes $\{1, ..., P\}$, for each regime $i$, a continuous component $V_t$ of a PDMP evolves according to:
+
+- an ordinary differential equation
+- a given flow
+
+$$\frac{dV_t}{dt}=b(i, V_t)$$
+
+Such that:
+
+$$V_t=\psi(i, t, v)$$
+
+We have a jump rate $\lambda(i, V_t)$ and say the system jumps at rate $\lambda(i, V_t)$. It means that: $$\underset{\eta\rightarrow0}{lim}\frac{1}{\eta}\mathbb{P}(\text{jump between $t$ and $t+\eta$})=\lambda(i, V_t)$$
+
+When a system jumps a new regime is chosen and thus a new position $V_t$.
+
+### PDMP to cover
+
+The PDMP we are looking at has the following characteristics:
+
+\begin{align}
+p&=1\\
+\frac{dV_t}{dt}&=b(1, V_t)=1\\
+\lambda(1, v)&=v^2\\
+\text{At the jump }(1, v)&\rightarrow(1, V^{rest})
+\end{align}
+
+We are interested in this setup in the context of interspike interval distribution simulations.
+
+## Simulating an example PDMP
+
+### Implementing our functions
+
+```{r, out.width="100%"}
+
+isi_simulation_poor_robust <- function(){
+  
+}
+
+isi_simulation_rejection <- function(){
+  
+}
+
+```
+
+### Simulation
