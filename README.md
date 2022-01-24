@@ -54,6 +54,10 @@ R Markdown file offering a simulation of point processes, e.g. with a thinning p
 
 R Markdown file offering a simulation of a piecewise deterministic markov process.
 
+## Project 11 - Simulating a Hodgkin-Huxley PDMP
+
+R Markdown file offering a simulation of a Hodgkin-Huxley piecewise deterministic markov process.
+
 #### License
 
 MIT, see `LICENSE.txt`

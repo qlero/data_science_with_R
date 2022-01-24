@@ -575,8 +575,11 @@ plot_estimator(
 
 ### STEP D
 
+*not completed.*
+
 ### STEP E
 
+*not completed.*
 
 <hr>
 
@@ -603,3 +606,23 @@ With $N_{t-1}$ is the corresponding counting process at time $t-1$.
 **Step D** -- Simulate a Hawkes process thanks to Step A and transform its points with $\Lambda$
 
 **Step E** -- On the transformed points, perform Ogata's tests to verify that we have indeed simulated a Hawkes process
+
+### STEP A
+
+*not completed.*
+
+### STEP B
+
+*not completed.*
+
+### STEP C
+
+*not completed.*
+
+### STEP D
+
+*not completed.*
+
+### STEP E
+
+*not completed.*

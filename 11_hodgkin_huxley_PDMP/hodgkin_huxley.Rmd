@@ -1,0 +1,30 @@
+---
+title: "Hodgkin-Huxley PDMP"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+# Hodgkin-Huxley PDMP
+
+TBD
+
+## Simulating an example PDMP
+
+### GOAL - Example setup
+
+TBD
+
+### METHOD - Implementing useful functions
+
+TBD
+
+### RESULTS - Simulation with the Poor/Robust algorithm
+
+TBD
+
+### COMMENTS
+
+TBD
