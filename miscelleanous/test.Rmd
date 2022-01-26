@@ -1,0 +1,1056 @@
+---
+title: "prep"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Linear Discriminant Analysis
+
+```{r}
+
+#install.packages("pgmm")
+#install.packages("mvtnorm")
+
+library(pgmm)
+library(mvtnorm)
+
+data(wine)
+
+```
+
+We start with learning a LDA model on a given data (i.e. estimate from the data the model parameters), assuming the following model:
+
+$$P(X|Z=k;\mu, \sigma) = \mathcal{N}(X;\mu_k, \Sigma)$$
+Where $\mu$ depends on the class but not $\Sigma$ (the weighted mean of the covariance matrices of each classes) with $P(Z=k)=\pi_k$ (the proportion). The ML estimation leads to the following update steps:
+
+\begin{align}
+\hat{\pi}_k &= \sum_{i=1}^n \mathbb{1}(z_i=k)/n\\
+\hat{\mu_k} &= \sum_{i=1} \mathbb{1}(z_i = k) x_i / n_k\\
+\hat{\Sigma} &= \frac{1}{n}\sum_{k=1}^K n_k S_k\\
+S_k &= \frac{1}{n_k}\sum_{i=1}^n \mathbb{1}_{(z_i = k)} (x_i - \hat{\mu_k})^t (x_i -\hat{\mu_k})
+\end{align}
+
+Once the model is learned we will be able to classify new data to one of the classes using maximum a-posteriori (MAP) and relying on the Bayes' rule such that:
+
+\begin{align}
+z^* &= \underset{k}{\mathrm{argmax}} P(Z=k|X=x^*)\\
+P(Z=k|X=x^*, \hat{\theta}) &= \frac{P(Z=k|\hat{\theta})P(x^*|Z=k, \hat{\theta})}{P(x)}\\
+P(Z=k|X=x^*, \hat{\theta}) &= \frac{\hat{\pi}_k.\phi(x^*|\hat{\mu}_k, \hat{\Sigma})}{P(x)}
+\end{align}
+
+Where $\phi$ is the PDF of the Gaussian distribution.
+
+<u>Function declarations:</u>
+
+```{r}
+
+lda.learn <- function(X, z) {
+  n = nrow(X); p=ncol(X)
+  K = max(z)
+  prop = rep(NA, K)
+  mu = matrix(NA, K, p)
+  Sigma = matrix(0, p, p)
+  for (k in 1:K){
+    n_k     = sum(z==k)
+    prop[k] = n_k/n
+    mu[k,]  = colSums(X[z==k,])/n_k
+    Sigma   = Sigma + n_k / n * cov(X[z == k,])
+  }
+  return(list(prop = prop, mu = mu, Sigma = Sigma))
+}
+
+lda.predict <- function(xstar, params){
+  K = length(params$prop)
+  Prob = matrix(NA, nrow(xstar), K)
+  for (k in 1:K){
+    Prob[,k] = params$prop[k] * dmvnorm(xstar, params$mu[k,], params$Sigma)
+  }
+  Prob = t(apply(Prob, 1, FUN = function(x){x/sum(x)}))
+  zstar = apply(Prob, 1, FUN = which.max)
+  return(list(probabilities = Prob, classification = zstar))
+}
+
+```
+
+<u>Setting the dataset:</u>
+
+```{r}
+
+X = as.matrix(wine[,c(2,4)]) # Alcohol + Fixed Acidity
+y = as.numeric(wine$Type)
+plot(X, col=y+1, pch=19)
+
+split_ratio  = 2/3
+split        = round(split_ratio*length(y))
+training_set = sample(nrow(X), split)
+
+X_train = X[training_set,]
+X_test  = X[-training_set,]
+y_train = y[training_set]
+y_test  = y[-training_set]
+
+```
+
+<u>Training:</u>
+
+```{r}
+
+lda = lda.learn(X_train, y_train)
+lda 
+
+```
+
+<u>Testing:</u>
+
+```{r}
+
+predictions = lda.predict(X_test, lda)
+plot(X_test, col=predictions$classification+1, pch=19)
+
+test_true = sum(predictions$classification != y_test)
+
+#Classification table/Confusion Matrix
+table(y_test, predictions$classification)
+
+cat("\nError Rate:", test_true/length(y_test))
+
+```
+
+## Quadratic Discriminant Analysis
+
+```{r}
+
+#install.packages("pgmm")
+#install.packages("mvtnorm")
+
+library(pgmm)
+library(mvtnorm)
+
+data(wine)
+
+```
+
+We start with learning a QDA model on a given data (i.e. estimate from the data the model parameters), assuming the following model:
+
+$$P(X|Z=k;\mu, \sigma) = \mathcal{N}(X;\mu_k, \Sigma_k)$$
+Where $\mu$ and $\Sigma$ depends on the class contrary to LDA where $\Sigma$ does not, with $P(Z=k)=\pi_k$ (the proportion). The ML estimation leads to the following update steps:
+
+\begin{align}
+\hat{\pi}_k &= \sum_{i=1}^n \mathbb{1}(z_i=k)/n\\
+\hat{\mu_k} &= \sum_{i=1} \mathbb{1}_{(z_i = k)} x_i / n_k\\
+\hat{\Sigma_k} &= \frac{1}{n}\sum_{k=1}^K \mathbb{1}_{(z_i = k)} n_k S_k\\
+S_k &= \frac{1}{n_k}\sum_{i=1}^n \mathbb{1}_{(z_i = k)} (x_i - \hat{\mu_k})^t (x_i -\hat{\mu_k})
+\end{align}
+
+Once the model is learned we will be able to classify new data to one of the classes using maximum a-posteriori (MAP) and relying on the Bayes' rule such that:
+
+\begin{align}
+z^* &= \underset{k}{\mathrm{argmax}} P(Z=k|X=x^*)\\
+P(Z=k|X=x^*, \hat{\theta}) &= \frac{P(Z=k|\hat{\theta})P(x^*|Z=k, \hat{\theta})}{P(x)}\\
+P(Z=k|X=x^*, \hat{\theta}) &= \frac{\hat{\pi}_k.\phi(x^*|\hat{\mu}_k, \hat{\Sigma}_k)}{P(x)}
+\end{align}
+
+Where $\phi$ is the PDF of the Gaussian distribution.
+
+<u>Function declarations:</u>
+
+```{r}
+
+qda.learn <- function(X, z) {
+  n = nrow(X); p=ncol(X)
+  K = max(z)
+  prop = rep(NA, K)
+  mu = matrix(NA, K, p)
+  Sigmas = list()
+  for (k in 1:K){
+    Sigma     = matrix(0, p, p)
+    n_k       = sum(z==k)
+    prop[k]   = n_k/n
+    mu[k,]    = colSums(X[z==k,])/n_k
+    Sigmas[[k]] = Sigma + n_k / n * cov(X[z == k,])
+  }
+  return(list(prop = prop, mu = mu, Sigmas = Sigmas))
+}
+
+qda.predict <- function(xstar, params){
+  K = length(params$prop)
+  Prob = matrix(NA, nrow(xstar), K)
+  for (k in 1:K){
+    Prob[,k] = params$prop[k] * dmvnorm(xstar, params$mu[k,], params$Sigmas[[k]])
+  }
+  Prob = t(apply(Prob, 1, FUN = function(x){x/sum(x)}))
+  zstar = apply(Prob, 1, FUN = which.max)
+  return(list(probabilities = Prob, classification = zstar))
+}
+
+```
+
+<u>Setting the dataset:</u>
+
+```{r}
+
+X = as.matrix(wine[,c(2,4)]) #as.matrix(wine[,c(2:ncol(wine))]) # Alcohol + Fixed Acidity
+y = as.numeric(wine$Type)
+plot(X, col=y+1, pch=19)
+
+split_ratio  = 2/3
+split        = round(split_ratio*length(y))
+training_set = sample(nrow(X), split)
+
+X_train = X[training_set,]
+X_test  = X[-training_set,]
+y_train = y[training_set]
+y_test  = y[-training_set]
+
+```
+
+<u>Training:</u>
+
+```{r}
+
+qda = qda.learn(X_train, y_train)
+qda 
+
+```
+
+<u>Testing:</u>
+
+```{r}
+
+predictions = qda.predict(X_test, qda)
+plot(X_test, col=predictions$classification+1, pch=19)
+
+test_true = sum(predictions$classification != y_test)
+
+#Classification table/Confusion Matrix
+table(y_test, predictions$classification)
+
+cat("\nError Rate:", test_true/length(y_test))
+
+```
+
+# K-Means
+
+```{r}
+
+#install.packages("pgmm")
+#install.packages("mvtnorm")
+
+library(pgmm)
+library(mvtnorm)
+library(ggplot2)
+library(mclust)
+
+data(wine)
+
+```
+
+<u>Function declarations:</u>
+
+```{r}
+
+euclidianDistance <- function(x, centroid){
+  ######
+  #### Computes the euclidian distance between a datapoint and a centroid.
+  ######
+  # Declares necessary functions for computing the euclidian distance
+  dist = function(a, b) (a-b)^2
+  norm = function(a)    sqrt(sum(mapply(dist, a, centroid)))
+  # Computes the distances
+  distances = t(apply(x, 1, norm))
+  # Return statement
+  return(distances)
+}
+
+findClosestCentroids <- function(x, centroids, clusters){
+  ######
+  #### Computes the centroid closest to each datapoints in an input array.
+  ######
+  # Variable initialization
+  n = dim(x)[1]
+  distances = c()
+  # Computes the euclidian distances
+  for (cl in 1:clusters){
+    cluster_dist = euclidianDistance(x, centroids[cl,])
+    distances = append(distances, cluster_dist)
+  }
+  distances = array(distances, dim=c(n, clusters))
+  # Finds the closest centroids
+  closest = (distances == apply(distances, 1, min))
+  # Return statement
+  return(list("distances"=distances, "closest"=closest))
+}
+
+generateCentroid <- function(x) {
+  ######
+  #### Generates a random centroid for a given dataset, given a normal
+  #### multivariate distribution with the mean and variance equal to the
+  #### empirical mu and Sigma of the dataset.
+  ######
+  # Variable initialization
+  centroid = c()
+  # Randomly draws a value for each dimension of the dataset
+  centroid = rmvnorm(1, colMeans(x), cov(x))
+  colnames(centroid) <- NULL
+  # return statement
+  return(centroid)
+}
+
+kMeans <- function(x, clusters, maxIterations=200, printMessage=T) {
+  ######
+  #### Implementation of a K-Means algorithm.
+  ######
+  
+  if(printMessage){cat("Processing KM-Means with", clusters, "cluster(s).")}
+  
+  # Variable initialization: dimensions of the input data
+  n = dim(x)[1]
+  K = dim(x)[2]
+  # Variable initialization: centroids
+  centroids = t(lapply(1:clusters, function(i) generateCentroid(x)))
+  centroids = matrix(unlist(centroids), ncol=K, byrow=TRUE)
+  # Variables initialization: vector to record step values
+  history_centroids = c(centroids)
+  
+  ###########################
+  ###### KM loop BEGIN ###### 
+  ###########################
+  for (loop in 1:maxIterations){
+    
+    # Computes the current closest centroids for each datapoint
+    closest_centroids = findClosestCentroids(x, centroids, clusters)
+   
+    # Updates the closest centroids
+    centroids = c()
+    for (cl in 1:clusters) {
+      # checks on the length of the cluster split as colMeans crashes if
+      # x[closest_centroids$closest[,cl],]  is a single datapoint
+      if (length(x[closest_centroids$closest[,cl],])==2) {
+        column_means = x[closest_centroids$closest[,cl],] 
+      } else {
+        column_means = colMeans(x[closest_centroids$closest[,cl],])
+      }
+      centroids = rbind(centroids, column_means)
+    }
+    
+    # Erases the matrix's columns and rows names inherited from the dataset
+    colnames(centroids) <- NULL
+    rownames(centroids) <- NULL
+    
+    # Records the loop's update
+    history_centroids = append(history_centroids, centroids)
+  }
+  ###########################
+  ####### KM loop END ####### 
+  ###########################
+  
+  #return statement
+  ret = list(
+    "centroids" = centroids,
+    "distances" = closest_centroids$distances,
+    "closest_centroids" = apply(closest_centroids$closest, 1, which),
+    "centroids_history" = history_centroids
+   )
+  return(ret)
+}
+
+plotData <- function(
+  x, clustering, mean_clusters,
+  t="K-Means", xl="Alcohol", yl="Fixed Acidity"
+) {
+  ######
+  #### Plots a cloud of point with clustering ellipses.
+  #####
+  
+  # Formats the input data as a dataframe
+  df = data.frame(x)
+  mean_clusters = data.frame(mean_clusters)
+  names(mean_clusters) = names(df)
+  
+  # Formats the clustering labels as factors for coloring
+  colors = as.factor(clustering)
+  
+  # Declares the plot
+  p = ggplot(df, aes_string(names(df)[1], names(df)[2], color=colors)) + 
+    geom_point() +
+    stat_ellipse(geom="polygon", aes(fill=colors), alpha=0.05) + 
+    guides(fill = "none") + 
+    labs(color="Wine Type", 
+         title=paste("Clustering obtained via", t), 
+         x=xl,y=yl) + 
+    geom_point(data=mean_clusters, color="black")
+  
+  # return statement 
+  return(p)
+}
+
+```
+
+<u>Setting the dataset:</u>
+
+```{r}
+
+X = as.matrix(wine[,c(2,4)]) #as.matrix(wine[,c(2:ncol(wine))]) # Alcohol + Fixed Acidity
+y = as.numeric(wine$Type)
+plot(X, col=y+1, pch=19)
+
+split_ratio  = 2/3
+split        = round(split_ratio*length(y))
+training_set = sample(nrow(X), split)
+
+X_train = X[training_set,]
+X_test  = X[-training_set,]
+y_train = y[training_set]
+y_test  = y[-training_set]
+
+```
+
+<u>clustering:</u>
+
+We compute the EM (with and without KM initialization) and KM algorithms on the whole dataset. We set 3, which we know as the number of wine types in the dataset, as the number of clusters.
+
+```{r}
+
+n_clusters = 3
+
+resultsKM = kMeans(X, n_clusters)
+
+plotData(X, resultsKM$closest_centroids, resultsKM$centroids)
+
+```
+
+
+<u>clustering with a train-test split:</u>
+
+We compute the EM (with and without KM initialization) and KM algorithms on the whole dataset. We set 3, which we know as the number of wine types in the dataset, as the number of clusters.
+
+```{r}
+
+resultsKM_train = kMeans(X_train, n_clusters)
+
+# KM on test set
+test_resultsKM = findClosestCentroids(
+  X_test, 
+  resultsKM_train$centroids,
+  n_clusters
+  )
+test_resultsKM$closest = apply(test_resultsKM$closest, 1, which)
+
+plotData(X_test, test_resultsKM$closest, resultsKM_train$centroids, 
+         t="K-Means, test set")
+
+```
+
+<u>K-Means class error:</u>
+
+whole dataset:
+
+```{r}
+
+classError(resultsKM$closest_centroid, y)
+
+```
+
+test set: 
+
+```{r}
+
+classError(test_resultsKM$closest, y_test)
+
+```
+
+<u>K-Means Adjusted RandIndex:</u>
+
+whole dataset:
+
+```{r}
+
+adjustedRandIndex(resultsKM$closest_centroid, y)
+
+```
+
+test set:
+
+```{r}
+
+adjustedRandIndex(test_resultsKM$closest, y_test)
+
+```
+
+# EM Algorithm
+
+```{r}
+
+#install.packages("pgmm")
+#install.packages("mvtnorm")
+
+library(pgmm)
+library(mvtnorm)
+library(ggplot2)
+library(mclust)
+
+data(wine)
+
+```
+
+<u>Function declarations:</u>
+
+```{r}
+
+akaikeIC <- function(llh, clusters, K) {
+  ######
+  #### Implementation of the the Akaike Information Criterion such that:
+  #### AIC = log-likelihood - eta(M)
+  #### i.e. the final log-likelihood of a model minus the number of free
+  #### scalar parameters in the model (nb of proportions (-1 as there are
+  #### only cluster-1 degrees of freedom) + nb of means + nb of sigmas).
+  ######
+  llh - (clusters-1) + clusters*K + clusters*((K*(K+1))/2)
+}
+
+computeAIC <- function(x, max_cluster=max_clusters, print_steps=TRUE){
+  ######
+  #### Computes the AIC of an EM algorithm implementation.
+  ######
+  
+  # Variable initialization
+  akaike_results = c()
+  
+  # Loops through a cluster parameter range to compute the AIC
+  for (cl in min_clusters:max_cluster){
+    EM = expectationMaximization(x, clusters=cl, printMessage=F)
+    akaike = akaikeIC(EM$llh_sum, cl, dim(x)[2])
+    akaike_results = append(akaike_results, akaike)
+    if (print_steps) {
+      print(paste("Total LLH with ", cl, " clusters: ", round(akaike, 3)))
+    }
+  }
+  
+  # Prints the result
+  print(paste("The best AIC result is achieved with ", 
+              which.max(akaike_results)+2, 
+              " clusters."))
+}
+
+bayesianIC <- function(llh, clusters, n, K) {
+  ######
+  #### Implementation of the Bayesian Information Criterion such that:
+  #### BIC = LLH - 1/2*eta(M)*log(n)
+  #### i.e. the final log-likelihood of a model minus the half of the number
+  #### of free scalar parameters in the model (nb of proportions (-1 as there
+  #### are only cluster-1 degrees of freedom) + nb of means + nb of sigmas)
+  #### then multiplied by the log of the number of datapoints.
+  ######
+  
+  # Variable declaration
+  llh - 1/2 * ((clusters-1) + clusters*K + clusters*((K*(K+1))/2)) * log(n)
+}
+
+computeBIC <- function(x, max_cluster=max_clusters, print_steps=TRUE){
+  ######
+  #### Computes the BIC of an EM algorithm implementation.
+  ######
+  
+  # Variable declaration
+  bayesian_results = c()
+  
+  # Loops through each cluster parameter to compute the corresponding AIC
+  for (cl in min_clusters:max_cluster){
+    EM = expectationMaximization(x, clusters=cl, printMessage=F)
+    bayesian = bayesianIC(EM$llh_sum, cl, dim(x)[1], dim(x)[2])
+    bayesian_results = append(bayesian_results, bayesian)
+    if (print_steps) {
+      print(paste("Total LLH with ", cl, " clusters: ", round(bayesian, 3)))
+    }
+  }
+
+  # Prints the result
+  print(paste("The best BIC result is achieved with ", 
+              which.max(bayesian_results)+2, 
+              " clusters."))
+}
+
+findClusters <- function(likelihoods) {
+  ######
+  #### Given an array of likelihood values (each column representing the 
+  #### likelihood of belonging to a specific cluster, each row representing 
+  #### a datapoint in an underlying dataset), finds the most matching cluster.
+  ######
+  
+  # Finds the most likely distribution to which each point belongs
+  clustering = apply((likelihoods == apply(likelihoods, 1, max)), 1, which)
+  
+  # Return statement
+  return(clustering)
+}
+
+doubleCrossValidation <- function(x_train, x_test, folds=10, max_cl=max_clusters) {
+  ######
+  #### Implements a double cross-validation with the resulting log-likelihood
+  #### being the selection criteria.
+  ######
+  
+  # Variable initialization
+  n_train = dim(x_train)[1]
+  foldAllocation = ceiling(seq_along(c(1:n_train))/(n_train/10))
+  fold_indexes = split(c(1:n_train), foldAllocation)
+  mean_cluster_criteria = c()
+  
+  # Iterates over the cluster range
+  for (cl in min_clusters:max_cl){
+    
+    # Performs the first step of the double cross-validation: iteration
+    # over the folds of the training set
+    llhs = c()
+    best_model = NULL
+    
+    # iterates over the k-folds
+    for (kFold in fold_indexes){
+      
+      # Stores the training dataset depending on which fold is validation
+      x_train_train = x_train[-kFold,]
+      x_train_val = x_train[kFold,]
+      
+      # Computes the EM (on the training set)
+      EM = expectationMaximization(x_train_train, cl, printMessage=F)
+      
+      # Retrieves the resulting llhs/distributions on the validation set
+      dists = mostMatchingDistribution(
+        EM$n_clusters, x_train_val, EM$prop, EM$means, EM$sigma
+      )
+      
+      # Records the resulting log-likelihood
+      sum_of_llhs = sum(apply(dists$likelihoods, 1, logSumExp))
+      llhs = append(llhs, sum_of_llhs)
+      
+      # Updates the best models computed so far if needed
+      if (is.null(best_model) || sum_of_llhs == min(llhs)){
+        best_model <- EM
+      }
+    }
+    
+    # Computes the likelihood on the test set given the model
+    # with the highest performance on the validation set
+    dists = mostMatchingDistribution(
+        best_model$n_clusters, 
+        x_test,
+        best_model$prop, 
+        best_model$means, 
+        best_model$sigma
+        )
+    
+    # Records the resulting log-likelihood
+    llhs = append(llhs, sum(apply(dists$likelihoods, 1, logSumExp)))
+    
+    # Records the mean llhs achieved with the cluster parameter
+    print(paste("Mean log-likelihood achieved with ", cl, " clusters: ",
+                round(mean(llhs), 4)))
+    mean_cluster_criteria = append(mean_cluster_criteria, mean(llhs))
+  }
+  
+  # Finds which cluster had the best performance
+  best_cluster = which.max(mean_cluster_criteria)
+  print(paste("The best result is achieved with ", 
+            best_cluster+2, 
+            " clusters (double CV)."))
+  
+  # return statement
+  return(mean_cluster_criteria)
+  
+}
+
+logLikelihood <- function(n, clusters, x, prop, mu, sigma) {
+  ######
+  #### Computes the gamma values of a dataset as part of an EM algorithm.
+  ######
+  
+  # Variable initialization
+  lgn = matrix(nrow=n, ncol=clusters)
+  
+  # Computes the gammas per clusters
+  for (cl in 1:clusters){
+    log_proba = matrix(dmvnorm(x, mu[cl,], sigma[[cl]], log=TRUE))
+    lgn[,cl] = log(prop[cl]) + log_proba
+  }
+  
+  # return statement
+  return(lgn)
+}
+
+logSumExp <- function (x) {
+  ######
+  #### Computes the log-sum-exponential of a vector/list of variables.
+  ######
+  
+  max(x) + log(sum(exp(x - max(x))))
+}
+
+mostMatchingDistribution <- function(clusters, x, prop, mu, sigma){
+  ######
+  #### Given a set of points, find the most matching distributions for them.
+  #### To be used for a test set.
+  ######
+  
+  # Computes the likelihood of belonging to a distribution
+  likelihoods = logLikelihood(dim(x)[1], clusters, x, prop, mu, sigma)
+  clustering = findClusters(likelihoods)
+  
+  # return statement
+  return(list("likelihoods" = likelihoods, "clustering" = clustering))
+}
+
+expectationMaximization <- function(
+  x, clusters, 
+  maxIterations=200, kmInit = F, printMessage=T
+) {
+  ######
+  #### Implementation of a multivariate EM algorithm.
+  ######
+  
+  if (printMessage) {
+    if (kmInit) {
+      cat("Processing EM with", clusters, "cluster(s), KM initialization.")
+    } else {
+      cat("Processing EM with", clusters, "cluster(s), random initialization.")
+    }
+  }
+  
+  # Variables initialization: dimensions of the input dataset
+  n = dim(x)[1]
+  K = dim(x)[2]
+  # Variables initialization: starting values for the EM parameters (means
+  # and sigmas are generated randomly with a multivariate normal distribution)
+  prop = rep(1/clusters, clusters)
+  if (kmInit) {
+    mu = kMeans(x, clusters, maxIterations, printMessage=F)$centroids
+  } else {
+    mu = rmvnorm(clusters, colMeans(x), cov(x))
+  }
+  sigma = lapply(1:clusters, function(i) cov(x))
+  # Variables initialization: comparators, vectors for recording 
+  #                           step values, etc.
+  history_LLH = c()
+  history_prop = c()
+  history_mu = c()
+  history_sigma = c()
+  previous_LLH = -Inf
+  counter = 0
+  loop_counter = 0
+  
+  ###########################
+  ###### EM loop BEGIN ###### 
+  ###########################
+  for (loop in 1:maxIterations){
+    
+    ################################################
+    #### E(xpectation)-Step (with logExp trick) ####
+    ################################################
+    
+    loop_counter = loop_counter + 1
+    
+    # Computes log-likelihood of the setup at the start of the loop
+    LLH = logLikelihood(n, clusters, x, prop, mu, sigma)
+    sum_LLH = sum(apply(LLH, 1, logSumExp))
+    
+    # Checks the LLH with the last recorded LLH for early stopping
+    # Criterion: no update for 5 loops (with llh rounded to 4 decimals)
+    if (round(sum_LLH,4) <= round(previous_LLH,4)) {
+      counter = counter + 1
+      if (counter >= 5) {
+        if (printMessage) {cat("\nEarly stopping at loop:", loop)}
+        break
+      }
+    } else {counter = 0; previous_LLH = sum_LLH}
+    
+    # Records the current LLH (plotting purposes)
+    history_LLH = append(history_LLH, sum_LLH)
+    
+    # Computes the gamma values per datapoints and clusters with
+    # the logExp trick
+    gam = exp(LLH - apply(LLH, 1, logSumExp))
+    
+    ################################################
+    ############## M(aximization)-Step #############
+    ################################################
+    
+    # Computes the update parameters of the EM algorithm 
+    # for the current loop for each cluster
+    for (cl in 1:clusters) {
+      
+      # Computes the sum of gammas and updates the cluster's proportions
+      nk = sum(gam[,cl])
+      prop[cl] = nk/n
+      # Updates the mean parameters
+      mean_compute = function(i) gam[i,cl] * x[i,]
+      mu[cl,] = Reduce("+", lapply(1:n, mean_compute))/nk
+      # Updates the covariance matrix parameters
+      m = mu[cl,]
+      sigma_compute = function(i) gam[i,cl] * (x[i,]-m) %*% t(x[i,]-m)
+      sigma[[cl]] = Reduce("+", lapply(1:n, sigma_compute))/nk
+      
+    }
+    
+    # Records the loop's updates
+    history_prop = append(history_prop, prop)
+    history_mu = append(history_mu, mu)
+    history_sigma = append(history_sigma, sigma)
+    
+  }
+  ###########################
+  ####### EM loop END ####### 
+  ###########################
+  
+  # Computes the log-likelihood results for the given dataset
+  llh_results = mostMatchingDistribution(clusters, x, prop, mu, sigma)
+  llh_sum = sum(apply(llh_results$likelihoods, 1, logSumExp))
+  if (printMessage) {cat("\nEnd log-likelihood: ", llh_sum, "\n")}
+  
+  # Formatting the record variables
+  history_prop = array(history_prop, c(loop_counter, clusters))
+  history_mu = array(history_mu, c(clusters, K, loop_counter))
+  history_sigma = array(history_sigma, c(clusters, K, K, loop_counter))
+  
+  # return statement
+  ret = list(
+    "N" = n,
+    "n_clusters" = clusters,
+    "prop" = prop,
+    "means" = mu,
+    "sigma" = sigma,
+    "clustering" = llh_results$clustering,
+    "llh_per_points" = llh_results$likelihoods,
+    "llh_sum" = llh_sum,
+    "prop_history" = history_prop,
+    "means_history" = history_mu,
+    "sigma_history" = history_sigma,
+    "llh_history" = history_LLH
+    )
+  return(ret)
+}
+
+```
+
+<u>Setting the dataset:</u>
+
+```{r}
+
+X = as.matrix(wine[,c(2,4)]) #as.matrix(wine[,c(2:ncol(wine))]) # Alcohol + Fixed Acidity
+y = as.numeric(wine$Type)
+plot(X, col=y+1, pch=19)
+
+split_ratio  = 2/3
+split        = round(split_ratio*length(y))
+training_set = sample(nrow(X), split)
+
+X_train = X[training_set,]
+X_test  = X[-training_set,]
+y_train = y[training_set]
+y_test  = y[-training_set]
+
+```
+
+<u>clustering:</u>
+
+```{r}
+
+n_clusters = 3
+min_clusters = length(unique(y))
+max_clusters = 10
+
+resultsEMwithoutKM = expectationMaximization(X, n_clusters)
+
+resultsEMwithKM = expectationMaximization(X, n_clusters, kmInit=T)
+
+```
+
+We display the final clustering obtained via the EM algorithm (with and without KM initialization):
+
+```{r}
+
+# non-ggplot implementation without ellipses
+# plot(X, col=resultsEMwithoutKM$clustering+1, pch=19)
+# points(resultsEMwithoutKM$means, col=1, pch=10)
+# title(main="Clustering obtained via EM (without K-Means init.)")
+
+plotData(X, resultsEMwithoutKM$clustering, resultsEMwithoutKM$means,
+         t="EM (without K-Means init.)")
+
+```
+
+```{r}
+
+# non-ggplot implementation without ellipses
+# plot(X, col=resultsEMwithKM$clustering+1, pch=19)
+# points(resultsEMwithKM$means, col=1, pch=10)
+# title(main="Clustering obtained via EM (with K-Means init.)")
+
+plotData(X, resultsEMwithKM$clustering, resultsEMwithKM$means, 
+         t="EM (with K-Means init.)")
+
+```
+
+
+```{r}
+
+resultsEM_train_withoutKM = expectationMaximization(X_train, n_clusters)
+
+```
+
+```{r}
+
+resultsEM_train_withKM = expectationMaximization(X_train, n_clusters, kmInit=T)
+
+```
+
+We perform the clustering on the test set using the results obtained with the algorithms on the train set.
+
+```{r}
+
+# EM with random init. on test set
+test_resultsEM_withoutKM = mostMatchingDistribution(
+  n_clusters, 
+  X_test, 
+  resultsEM_train_withoutKM$prop, 
+  resultsEM_train_withoutKM$means, 
+  resultsEM_train_withoutKM$sigma
+  )
+
+# EM with KM init. on test set
+test_resultsEM_withKM = mostMatchingDistribution(
+  n_clusters, 
+  X_test, 
+  resultsEM_train_withKM$prop, 
+  resultsEM_train_withKM$means, 
+  resultsEM_train_withKM$sigma
+  )
+
+```
+
+We display the final clustering obtained on the test set via the EM algorithm (with and without KM initialization):
+
+```{r}
+
+# non-ggplot implementation without ellipses
+# plot(X_test, col=test_resultsEM_withoutKM$clustering+1, pch=19)
+# points(resultsEM_train_withoutKM$means, col=1, pch=10)
+# title(main="Test set clustering obtained via EM (without K-Means init.)")
+
+plotData(X_test, test_resultsEM_withoutKM$clustering, 
+         resultsEM_train_withoutKM$means, 
+         t="EM, test set, (without K-Means init.)")
+
+```
+
+```{r}
+
+# non-ggplot implementation without ellipses
+# plot(X_test, col=test_resultsEM_withKM$clustering+1, pch=19)
+# points(resultsEM_train_withKM$means, col=1, pch=10)
+# title(main="Test set clustering obtained via EM (with K-Means init.)")
+
+plotData(X_test, test_resultsEM_withKM$clustering, 
+         resultsEM_train_withKM$means, 
+         t="EM, test set, (with K-Means init.)")
+
+```
+
+<u>EM class error:</u>
+
+For the case with a random initialization:
+
+```{r}
+
+classError(resultsEMwithoutKM$clustering, y)
+
+```
+
+For the case with a k-means initialization:
+
+```{r}
+
+classError(resultsEMwithKM$clustering, y)
+
+```
+
+For the case with a random initialization:
+
+```{r}
+
+classError(test_resultsEM_withoutKM$clustering, y_test)
+
+```
+
+For the case with a k-means initialization:
+
+```{r}
+
+classError(test_resultsEM_withKM$clustering, y_test)
+
+```
+
+<u>EM Adjusted RandIndex:</u>
+
+For the case with a random initialization:
+
+```{r}
+
+adjustedRandIndex(resultsEMwithoutKM$clustering, y)
+
+```
+
+For the case with a k-means initialization:
+
+```{r}
+
+adjustedRandIndex(resultsEMwithKM$clustering, y)
+
+```
+
+For the case with a random initialization:
+
+```{r}
+
+adjustedRandIndex(test_resultsEM_withoutKM$clustering, y_test)
+
+```
+
+For the case with a k-means initialization:
+
+```{r}
+
+adjustedRandIndex(test_resultsEM_withKM$clustering, y_test)
+
+```
+
+<u>Using the Akaike Information Criterion:</u>
+
+```{r}
+
+computeAIC(X)
+
+```
+
+<u>Using the Bayesian Information Criterion:</u>
+
+```{r}
+
+computeBIC(X)
+
+```
+
+<u>Using Cross-Validated Likelihood:</u>
+
+We implement a double cross-validation with 10 folds and a maximum cluster parameter of 10.
+
+
+```{r}
+
+cv_logLikelihoods = doubleCrossValidation(X_train, X_test) 
+
+```
+
+
+
