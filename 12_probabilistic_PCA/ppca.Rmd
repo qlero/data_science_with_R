@@ -1,0 +1,128 @@
+---
+title: "mppca"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+
+library(MASS)
+
+X = rbind(rmvnorm(20, c(0,0,0), diag(3)), rmvnorm(20, c(0,5,3), diag(3)))
+
+n_clusters = 2
+latent_dim = 1
+
+
+### INIT
+
+initialize_ppca <- function(X, n_clusters, latent_dim) {
+  
+  N     = dim(X)[1]
+  d     = dim(X)[2]
+  D_old = -Inf
+  D     = -1
+  
+  # centroid initialization
+  init_center     = sample(c(1:N), 2, replace=FALSE)
+  mu              = X[init_center,]
+  distance_square = matrix(0, N, n_clusters)
+  points_cluster  = matrix(0, N)
+  
+  while (abs(D_old - D)>0.001) {
+    D_old = D
+    # assigns clusters
+    for (cluster in 1:n_clusters) {
+      distance_square[,cluster] = rowSums((X - mu[1,])^2)
+    }
+    points_cluster = max.col(distance_square)
+    # minimum distance
+    distmin = apply(matrix(c(1:N)), 1, function(x){distance_square[x, points_cluster[x]]})
+    D = sum(distmin)
+    # computes new centers
+    for (cluster in 1:n_clusters) {
+      mu[cluster,] = colMeans(X[points_cluster==cluster,])
+    }
+  }
+  
+  # parameter initialization
+  prop    = matrix(0, n_clusters)
+  W       = array(0, c(d,latent_dim,n_clusters))
+  sigma2  = matrix(0, n_clusters)
+  var_lvl = F
+  for (cluster in 1:n_clusters) {
+    if (var_lvl){
+      W[,,cluster] = var_lvl * matrix(rnorm(d*latent_dim, 0, 1), d, latent_dim)
+    } else {
+      W[,,cluster] = matrix(rnorm(d*latent_dim, 0, 1), d, latent_dim)
+    }
+    pi[cluster] = sum(points_cluster==cluster)/N
+    if (var_lvl){
+      sigma2[cluster] = abs((var_lvl/10)*rnorm(1, 0, 1))
+    } else {
+      sigma2[cluster] = mean(distmin[points_cluster==cluster])/d
+    }
+  }
+  
+  # returns
+  return(list(prop=prop, mu=mu, W=W, sigma2=sigma2, clusters=points_cluster))
+}
+
+expectation_maximization_ppca <- function(X, prop, mu, W, sigma2, n_iterations){
+  
+  N          = dim(X)[1]
+  d          = dim(X)[2]
+  n_clusters = dim(W)[3]
+  latent_dim = dim(W)[2]
+  
+  sigma2_history = matrix(0, n_clusters, n_iterations)
+  M = array(0, c(latent_dim,latent_dim,n_clusters))
+  Minv = array(0, c(latent_dim,latent_dim,n_clusters))
+  Cinv =array(0, c(d, d, n_clusters))
+  logR = matrix(0, N, n_clusters)
+  R = matrix(0, N, n_clusters)
+  L = matrix(0, n_iterations)
+  
+  for (i in 1:n_iterations) {
+    for (cluster in 1:n_clusters) {
+      sigma2_history[cluster, i] = sigma2[cluster]
+      # Computes M
+      M[,,cluster] = sigma2[cluster]*diag(latent_dim) + t(W[,,cluster])%*%W[,,cluster]
+      Minv[,,cluster] = ginv(M[,,cluster])
+      # Computes Cinv
+      Cinv[,,cluster] = (diag(d) - (W[,,cluster]%*%t(Minv[,,cluster]))%*%t(W[,,cluster]))/sigma2[cluster]
+      # Computes R_ni
+      deviation_from_center = X - mu[cluster,]
+      logR[,cluster] = (
+        log(prop[cluster]) + 0.5*log(det(
+          diag(d) - (W[,,cluster]%*%t(Minv[,,cluster]))%*%t(W[,,cluster]))
+        ) - 0.5 * d * log(sigma2[cluster]) - 0.5 * sum(
+          deviation_from_center * (deviation_from_center %*% t(Cinv[,,cluster]))
+          )
+      )
+    }
+    myMax = apply(logR, 1, max)
+    print(sum(myMax + log(rowSums(exp(logR - myMax)))))
+    L[i] = (
+      sum(myMax + log(rowSums(exp(logR - myMax)))) - N * d * log(2*prop)/2
+    )
+    logR = logR - myMax - log(rowSums(exp(logR - myMax)))
+    myMax = apply(logR, 2, max)
+    logpi = myMax + log(colSums(exp(logR - myMax))) - log(N)
+    logpi = t(logpi)
+    prop = exp(logpi)
+    R = exp(logR)
+  }
+}
+
+```
+
