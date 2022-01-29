@@ -1,0 +1,47 @@
+---
+title: "Brownian Motion"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+# Brownian Motion Context
+
+
+
+## Simulating an example Hodgkin-Huxley PDMP
+
+### GOAL
+
+We are interested in implementing a Brownian Motion process model using two different algorithms.
+
+### METHOD
+
+<u>Setup:</u>
+
+
+<u>Simulation method 1:</u>
+
+
+<u>Simulation method 2:</u>
+
+
+<u>Function implementations:</u>
+
+```{r functions}
+
+
+```
+
+### RESULTS - Simulation with Algorithm 1
+
+
+### RESULTS - Simulation with Algorithm 2
+
+
+### COMMENTS
+

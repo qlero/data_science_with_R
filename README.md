@@ -64,6 +64,12 @@ R Markdown file offering a simulation of a Hodgkin-Huxley piecewise deterministi
 
 <img src="assets/HH.png" width="600">
 
+## Project 11 - Simulating a Brownian Motion
+
+R Markdown file offering a simulation of a Brownian Motion process.
+
+<img src="assets/BB.png" width="600">
+
 #### License
 
 MIT, see `LICENSE.txt`
