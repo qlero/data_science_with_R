@@ -50,13 +50,19 @@ R Markdown file offering an overview of homogeneous and non-homogeneous Poisson 
 
 R Markdown file offering a simulation of point processes, e.g. with a thinning process.
 
+<img src="assets/point_process.png" width="600">
+
 ## Project 10 - Simulating PDMP
 
 R Markdown file offering a simulation of a piecewise deterministic markov process.
 
+<img src="assets/PDMP.png" width="600">
+
 ## Project 11 - Simulating a Hodgkin-Huxley PDMP
 
 R Markdown file offering a simulation of a Hodgkin-Huxley piecewise deterministic markov process.
+
+<img src="assets/HH.png" width="600">
 
 #### License
 
