@@ -66,7 +66,7 @@ R Markdown file offering a simulation of a Hodgkin-Huxley piecewise deterministi
 
 ## Project 11 - Simulating a Brownian Motion
 
-R Markdown file offering a simulation of a Brownian Motion process.
+R Markdown file offering a simulation of a Brownian Motion process (using a standard algorithm or Donsker's theorem)
 
 <img src="assets/BB.png" width="600">
 
