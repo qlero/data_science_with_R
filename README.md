@@ -68,7 +68,7 @@ R Markdown file offering a simulation of a Hodgkin-Huxley piecewise deterministi
 
 R Markdown file offering a simulation of a Brownian Motion process (using a standard algorithm or Donsker's theorem)
 
-<img src="assets/BB.png" width="600">
+<img src="assets/BM.png" width="600">
 
 #### License
 
