@@ -76,7 +76,7 @@ donsker_simulation <- function(n, eta, graph=F) {
   # Computes the steps of a donsker-based brownian motion
   X = sample(c(-1, 1), n, T, prob = c(1/2, 1/2))
   S = cumsum(X)
-  W = unlist(apply(matrix(timesteps), 1, function(x) {1/sqrt(n)*S[round(n*x)]}))
+  W = unlist(apply(matrix(timesteps), 1, function(x) {1/sqrt(n)*S[floor(n*x)]}))
   if (graph) {
     par(mar=c(2.5,2.5,2.5,2.5)) # deals with margin error
     plot(timesteps, c(0, W), type="l",
